@@ -3,13 +3,11 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { 
-  Container, Card, CardContent, Typography, Stack, Button, IconButton, 
+  Container, Card, Typography, Stack, Button, IconButton, 
   Dialog, DialogTitle, DialogActions, Box, Pagination, Skeleton, 
   Tooltip, ToggleButton, ToggleButtonGroup, Table, TableBody, TableCell, 
   TableContainer, TableHead, TableRow, Paper, Alert, Snackbar, Chip
 } from "@mui/material";
-import Grid from '@mui/material/Grid';
-// Import Masonry từ MUI Lab
 import Masonry from '@mui/lab/Masonry';
 import {
   DeleteOutline, ContentCopy, Download, 
@@ -50,10 +48,10 @@ export default function MediaPage() {
   
   const queryClient = useQueryClient();
 
-  // 2. Fetch dữ liệu
+  // 2. Fetch dữ liệu với React Query (Tăng limit để Masonry trông đầy đặn hơn)
   const { data, isLoading, isError, refetch } = useQuery<MediaResponse>({
     queryKey: ['media', page],
-    queryFn: () => api.get(`/media?page=${page}&limit=12`), // Masonry đẹp hơn khi hiển thị nhiều item
+    queryFn: () => api.get(`/media?page=${page}&limit=15`),
   });
 
   // 3. Mutation xóa tệp (Optimistic Updates)
@@ -83,7 +81,7 @@ export default function MediaPage() {
     }
   });
 
-  // 4. Các hàm tiện ích
+  // 4. Các hàm xử lý tiện ích
   const copyToClipboard = (id: string) => {
     const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/media/${id}/file`;
     navigator.clipboard.writeText(url);
@@ -108,6 +106,8 @@ export default function MediaPage() {
     }
   };
 
+  // --- RENDERING LOGIC ---
+
   if (isError) return (
     <Container sx={{ py: 10, textAlign: 'center' }}>
       <ErrorOutline color="error" sx={{ fontSize: 60, mb: 2 }} />
@@ -117,11 +117,11 @@ export default function MediaPage() {
   );
 
   if (isLoading) return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
       <Skeleton width={250} height={50} sx={{ mb: 4 }} />
-      <Masonry columns={{ xs: 1, sm: 2, md: 4 }} spacing={2}>
-        {[200, 300, 250, 400, 180, 350, 220, 300].map((height, i) => (
-          <Skeleton key={i} variant="rectangular" height={height} sx={{ borderRadius: 3 }} />
+      <Masonry columns={{ xs: 2, sm: 3, md: 4, lg: 5 }} spacing={1.5}>
+        {[300, 200, 400, 250, 350, 280, 180, 320, 240, 310].map((h, i) => (
+          <Skeleton key={i} variant="rectangular" height={h} sx={{ borderRadius: 3 }} />
         ))}
       </Masonry>
     </Container>
@@ -136,79 +136,101 @@ export default function MediaPage() {
   );
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      {/* Header & View Toggle */}
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={4}>
-        <Typography variant="h4" fontWeight={800}>Thư viện Media</Typography>
+        <Typography variant="h4" fontWeight={800} sx={{ letterSpacing: '-0.5px' }}>Thư viện Media</Typography>
         <ToggleButtonGroup 
           value={viewMode} 
           exclusive 
           onChange={(_, v) => v && setViewMode(v)} 
           size="small"
-          color="primary"
         >
           <ToggleButton value="grid"><GridView fontSize="small" /></ToggleButton>
           <ToggleButton value="list"><ViewList fontSize="small" /></ToggleButton>
         </ToggleButtonGroup>
       </Stack>
 
+      {/* Grid View (Masonry) */}
       {viewMode === 'grid' ? (
-        /* MASONRY LAYOUT: Tự động lấp đầy khoảng trống theo chiều dọc */
-        <Masonry columns={{ xs: 1, sm: 2, md: 4 }} spacing={2}>
+        <Masonry columns={{ xs: 2, sm: 3, md: 4, lg: 5 }} spacing={1.5}>
           {data.data.map((item) => (
             <Card 
               key={item.id}
-              variant="outlined" 
               sx={{ 
                 borderRadius: 3, 
+                position: 'relative',
+                border: 'none',
                 overflow: 'hidden',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
-                  '& .media-actions': { opacity: 1 }
-                }
+                backgroundColor: 'grey.100',
+                '&:hover .overlay-content': { opacity: 1 },
+                '&:hover img, &:hover video': { transform: 'scale(1.05)' }
               }}
             >
-              <Box sx={{ position: 'relative', bgcolor: 'grey.100', lineHeight: 0 }}>
-                {/* MediaRenderer giữ tỷ lệ gốc, Masonry sẽ tính toán chiều cao Card tương ứng */}
+              {/* Media Container */}
+              <Box sx={{ lineHeight: 0, overflow: 'hidden', transition: '0.3s' }}>
                 <MediaRenderer 
                   url={`${process.env.NEXT_PUBLIC_BACKEND_URL}/media/${item.id}/file`} 
                   mimeType={item.mime_type} 
                   preview 
                 />
-                
-                {/* Overlay actions khi hover */}
-                <Stack 
-                  className="media-actions"
-                  direction="row" 
-                  spacing={1} 
-                  sx={{ 
-                    position: 'absolute', top: 8, right: 8, 
-                    opacity: 0, transition: '0.2s',
-                    bgcolor: 'rgba(255,255,255,0.85)',
-                    borderRadius: 2, p: 0.5, backdropFilter: 'blur(4px)'
-                  }}
-                >
-                  <IconButton size="small" onClick={() => copyToClipboard(item.id)}><ContentCopy fontSize="inherit" /></IconButton>
-                  <IconButton size="small" color="error" onClick={() => setDeleteId(item.id)}><DeleteOutline fontSize="inherit" /></IconButton>
-                </Stack>
               </Box>
 
-              <CardContent sx={{ p: 1.5 }}>
-                <Typography variant="body2" fontWeight={600} noWrap title={item.filename} sx={{ mb: 0.5 }}>
-                  {item.filename}
-                </Typography>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography variant="caption" color="text.secondary">
-                    {formatBytes(item.size)}
-                  </Typography>
-                  <Tooltip title="Tải về">
-                    <IconButton size="small" onClick={() => handleDownload(item.id, item.filename)}>
-                      <Download fontSize="inherit" />
-                    </IconButton>
-                  </Tooltip>
+              {/* Floating Metadata & Actions Overlay */}
+              <Box 
+                className="overlay-content"
+                sx={{
+                  position: 'absolute',
+                  top: 0, left: 0, right: 0, bottom: 0,
+                  background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 40%, transparent 100%)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  p: 1.5,
+                  opacity: 0, // Seamless Hover: Mặc định ẩn
+                  transition: 'opacity 0.3s ease-in-out',
+                  zIndex: 2
+                }}
+              >
+                {/* Nút hành động phía trên */}
+                <Stack direction="row" justifyContent="flex-end" spacing={0.5}>
+                  <IconButton 
+                    size="small" 
+                    sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', '&:hover': { bgcolor: 'white', color: 'black' } }}
+                    onClick={(e) => { e.preventDefault(); copyToClipboard(item.id); }}
+                  >
+                    <ContentCopy fontSize="inherit" />
+                  </IconButton>
+                  <IconButton 
+                    size="small" 
+                    sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', '&:hover': { bgcolor: '#ff4444' } }}
+                    onClick={(e) => { e.preventDefault(); setDeleteId(item.id); }}
+                  >
+                    <DeleteOutline fontSize="inherit" />
+                  </IconButton>
                 </Stack>
-              </CardContent>
+
+                {/* Thông tin tệp phía dưới */}
+                <Box>
+                  <Typography variant="caption" sx={{ color: 'white', fontWeight: 600, display: 'block', mb: 0.5, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
+                    {item.filename}
+                  </Typography>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '10px' }}>
+                      {formatBytes(item.size)}
+                    </Typography>
+                    <Tooltip title="Tải xuống">
+                      <IconButton 
+                        size="small" 
+                        sx={{ color: 'white', p: 0 }}
+                        onClick={(e) => { e.preventDefault(); handleDownload(item.id, item.filename); }}
+                      >
+                        <Download sx={{ fontSize: 18 }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                </Box>
+              </Box>
             </Card>
           ))}
         </Masonry>
@@ -249,10 +271,12 @@ export default function MediaPage() {
         </TableContainer>
       )}
 
+      {/* Phân trang */}
       <Box display="flex" justifyContent="center" mt={6}>
         <Pagination count={data.pagination.totalPages} page={page} onChange={(_, v) => setPage(v)} color="primary" />
       </Box>
 
+      {/* Dialog xác nhận xóa */}
       <Dialog open={Boolean(deleteId)} onClose={() => setDeleteId(null)}>
         <DialogTitle sx={{ fontWeight: 700 }}>Xác nhận xóa tệp?</DialogTitle>
         <DialogActions sx={{ p: 3 }}>
@@ -261,6 +285,7 @@ export default function MediaPage() {
         </DialogActions>
       </Dialog>
 
+      {/* Thông báo Snackbar */}
       <Snackbar 
         open={snackbar.open} 
         autoHideDuration={3000} 
