@@ -1,9 +1,15 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { AppBar, Toolbar, Typography, Container, CssBaseline, IconButton, Drawer, List, ListItem, ListItemButton, ListItemText, Box, Button, Divider } from "@mui/material";
+import { 
+  AppBar, Toolbar, Typography, Container, CssBaseline, IconButton, 
+  Drawer, List, ListItem, ListItemButton, ListItemText, Box, 
+  Button, Divider, Avatar, Menu, MenuItem, ListItemIcon, Tooltip 
+} from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import LogoutIcon from "@mui/icons-material/Logout";
+import PersonIcon from "@mui/icons-material/Person";
+import SettingsIcon from "@mui/icons-material/Settings";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -20,14 +26,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [queryClient] = useState(() => new QueryClient());
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  
   const pathname = usePathname();
 
-  // Chỉ dùng useEffect để cập nhật UI nút Login/Logout
   useEffect(() => {
-    setIsLoggedIn(auth.isLoggedIn());
+    const loggedIn = auth.isLoggedIn();
+    setIsLoggedIn(loggedIn);
+    if (loggedIn) {
+      setUser(auth.getUser());
+    }
   }, [pathname]);
 
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
+  const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
+  const handleCloseUserMenu = () => setAnchorEl(null);
 
   const drawer = (
     <Box onClick={handleDrawerToggle} sx={{ width: 250, textAlign: "center" }}>
@@ -43,7 +57,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         ))}
       </List>
       {isLoggedIn && (
-        <List><ListItem disablePadding><ListItemButton onClick={() => auth.logout()} sx={{ color: "error.main" }}><ListItemText primary="Đăng xuất" /></ListItemButton></ListItem></List>
+        <>
+          <Divider />
+          <Box sx={{ p: 2 }}>
+            <Typography variant="body2" color="text.secondary" noWrap sx={{ mb: 1 }}>{user?.email}</Typography>
+            <Button fullWidth variant="outlined" color="error" size="small" onClick={() => auth.logout()}>Đăng xuất</Button>
+          </Box>
+        </>
       )}
     </Box>
   );
@@ -58,21 +78,77 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Container maxWidth="lg">
                 <Toolbar disableGutters>
                   <IconButton color="inherit" edge="start" onClick={handleDrawerToggle} sx={{ mr: 2, display: { md: "none" } }}><MenuIcon /></IconButton>
-                  <Typography variant="h6" component={Link} href="/" sx={{ flexGrow: 1, textDecoration: "none", color: "primary.main", fontWeight: 800 }}>CDNVIETPQ</Typography>
+                  
+                  <Typography variant="h6" component={Link} href="/" sx={{ flexGrow: 1, textDecoration: "none", color: "primary.main", fontWeight: 800 }}>
+                    CDNVIETPQ
+                  </Typography>
+
                   <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center" }}>
                     {navItems.map((item) => (
-                      <Button key={item.href} component={Link} href={item.href} sx={{ ml: 2, fontWeight: 700, color: pathname === item.href ? "primary.main" : "text.secondary" }}>{item.label}</Button>
+                      <Button 
+                        key={item.href} 
+                        component={Link} 
+                        href={item.href} 
+                        sx={{ 
+                          ml: 2, 
+                          fontWeight: 700, 
+                          color: pathname === item.href ? "primary.main" : "text.secondary",
+                          borderBottom: pathname === item.href ? '2px solid' : 'none',
+                          borderRadius: 0
+                        }}
+                      >
+                        {item.label}
+                      </Button>
                     ))}
+
                     {isLoggedIn ? (
-                      <Button onClick={() => auth.logout()} variant="outlined" color="error" size="small" startIcon={<LogoutIcon />} sx={{ ml: 4 }}>Thoát</Button>
+                      <>
+                        <Tooltip title="Tài khoản">
+                          <IconButton onClick={handleOpenUserMenu} sx={{ p: 0, ml: 3 }}>
+                            <Avatar sx={{ bgcolor: 'primary.main', width: 35, height: 35, fontSize: '1rem', fontWeight: 700 }}>
+                              {user?.email?.charAt(0).toUpperCase() || "A"}
+                            </Avatar>
+                          </IconButton>
+                        </Tooltip>
+                        <Menu
+                          anchorEl={anchorEl}
+                          open={Boolean(anchorEl)}
+                          onClose={handleCloseUserMenu}
+                          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                          PaperProps={{ sx: { mt: 1.5, minWidth: 180, borderRadius: 2, boxShadow: '0px 4px 20px rgba(0,0,0,0.1)' } }}
+                        >
+                          <Box sx={{ px: 2, py: 1 }}>
+                            <Typography variant="subtitle2" fontWeight={700} noWrap>Administrator</Typography>
+                            <Typography variant="caption" color="text.secondary" noWrap>{user?.email}</Typography>
+                          </Box>
+                          <Divider />
+                          <MenuItem onClick={handleCloseUserMenu} sx={{ fontSize: '0.9rem' }}>
+                            <ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon> Hồ sơ
+                          </MenuItem>
+                          <MenuItem onClick={handleCloseUserMenu} sx={{ fontSize: '0.9rem' }}>
+                            <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon> Cài đặt
+                          </MenuItem>
+                          <Divider />
+                          <MenuItem onClick={() => auth.logout()} sx={{ color: 'error.main', fontSize: '0.9rem' }}>
+                            <ListItemIcon><LogoutIcon fontSize="small" color="error" /></ListItemIcon> Đăng xuất
+                          </MenuItem>
+                        </Menu>
+                      </>
                     ) : (
-                      pathname !== "/login" && <Button component={Link} href="/login" variant="contained" sx={{ ml: 4 }}>Đăng nhập</Button>
+                      pathname !== "/login" && (
+                        <Button component={Link} href="/login" variant="contained" startIcon={<AccountCircleIcon />} sx={{ ml: 4, borderRadius: 2, textTransform: 'none', fontWeight: 700 }}>
+                          Đăng nhập
+                        </Button>
+                      )
                     )}
                   </Box>
                 </Toolbar>
               </Container>
             </AppBar>
+
             <Drawer variant="temporary" open={mobileOpen} onClose={handleDrawerToggle}>{drawer}</Drawer>
+            
             <Box component="main" sx={{ flexGrow: 1, py: { xs: 2, md: 4 } }}>
               {children}
             </Box>
