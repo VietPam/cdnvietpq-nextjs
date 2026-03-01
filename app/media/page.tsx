@@ -1,4 +1,13 @@
 import { api } from "@/lib/api";
+import {
+  Container,
+  Typography,
+  Grid,
+  Card,
+  CardContent,
+  Stack,
+  Chip,
+} from "@mui/material";
 
 interface MediaItem {
   id: string;
@@ -38,26 +47,59 @@ export default async function MediaPage({
   const items = response.data;
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Media</h1>
+    <Container maxWidth="lg" sx={{ py: 6 }}>
+      <Stack spacing={4}>
+        <Typography variant="h4" fontWeight={700}>
+          Media
+        </Typography>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {items.map((item) => (
-          <div key={item.id} className="border rounded-lg p-3">
-            <p className="font-medium text-sm break-all">
-              {item.filename}
-            </p>
+        <Grid container spacing={3}>
+          {items.map((item) => (
+            <Grid
+              key={item.id}
+              size={{ xs: 12, sm: 6, md: 4, lg: 3 }}
+            >
+              <Card
+                elevation={3}
+                sx={{
+                  height: "100%",
+                  borderRadius: 3,
+                }}
+              >
+                <CardContent>
+                  <Stack spacing={2}>
+                    <Typography
+                      variant="subtitle2"
+                      fontWeight={600}
+                      sx={{ wordBreak: "break-word" }}
+                    >
+                      {item.filename}
+                    </Typography>
 
-            <p className="text-xs text-gray-500 mt-1">
-              {new Date(item.created_at).toLocaleString()}
-            </p>
+                    <Typography variant="caption" color="text.secondary">
+                      {new Date(item.created_at).toLocaleString()}
+                    </Typography>
 
-            <p className="text-xs text-gray-400 mt-1">
-              {(item.size / 1024).toFixed(1)} KB
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
+                    <Typography variant="caption" color="text.secondary">
+                      {(item.size / 1024).toFixed(1)} KB
+                    </Typography>
+
+                    <Chip
+                      size="small"
+                      label={item.visibility}
+                      color={
+                        item.visibility === "public"
+                          ? "success"
+                          : "default"
+                      }
+                    />
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </Stack>
+    </Container>
   );
-} 
+}
