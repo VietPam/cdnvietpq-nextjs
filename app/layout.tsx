@@ -15,13 +15,12 @@ import {
   ListItemText,
   Box,
   Button,
-  useMediaQuery,
-  useTheme,
   Divider,
   CircularProgress,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import LogoutIcon from "@mui/icons-material/Logout";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -33,8 +32,7 @@ const navItems = [
   { label: "Tải lên", href: "/media/upload" },
 ];
 
-// Danh sách các route không cần đăng nhập
-const PUBLIC_ROUTES = ["/login"];
+const PUBLIC_ROUTES = ["/", "/login"];
 
 export default function RootLayout({
   children,
@@ -46,33 +44,12 @@ export default function RootLayout({
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  const theme = useTheme();
   const pathname = usePathname();
   const router = useRouter();
 
-  useEffect(() => {
-    const checkAuth = () => {
-      const loggedIn = auth.isLoggedIn();
-      setIsLoggedIn(loggedIn);
-
-      // 👉 LOGIC CHUYỂN HƯỚNG: 
-      // Nếu chưa login và cố tình vào các trang không phải public
-      if (!loggedIn && !PUBLIC_ROUTES.includes(pathname)) {
-        router.replace("/login");
-      } 
-      // Nếu đã login rồi mà vẫn ở trang /login thì đá về Home
-      else if (loggedIn && pathname === "/login") {
-        router.replace("/");
-      }
-
-      setCheckingAuth(false);
-    };
-
-    checkAuth();
-  }, [pathname, router]);
-
+  // 1. Khai báo các hàm logic trước
   const handleDrawerToggle = () => {
-    setMobileOpen((prevState) => !prevState);
+    setMobileOpen((prev) => !prev);
   };
 
   const handleLogout = () => {
@@ -81,44 +58,49 @@ export default function RootLayout({
     router.replace("/login");
   };
 
-  // Hiển thị màn hình Loading trắng khi đang check auth để tránh bị "flash" giao diện cũ
-  if (checkingAuth) {
-    return (
-      <html lang="vi">
-        <body>
-          <Box sx={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
-            <CircularProgress />
-          </Box>
-        </body>
-      </html>
-    );
-  }
+  // 2. Chạy Effect kiểm tra Auth
+  useEffect(() => {
+    const checkAuth = () => {
+      const loggedIn = auth.isLoggedIn();
+      setIsLoggedIn(loggedIn);
 
+      if (pathname.startsWith("/media") && !loggedIn) {
+        router.replace(`/login?redirect=${pathname}`);
+      } else if (loggedIn && pathname === "/login") {
+        router.replace("/");
+      }
+      setCheckingAuth(false);
+    };
+
+    checkAuth();
+  }, [pathname, router]);
+
+  // 3. Khai báo các thành phần UI phụ (Sau khi đã có handleDrawerToggle)
   const drawer = (
     <Box onClick={handleDrawerToggle} sx={{ width: 250, textAlign: "center" }}>
       <Typography variant="h6" sx={{ my: 2, fontWeight: 800, color: "primary.main" }}>
         CDNVIETPQ
       </Typography>
       <Divider />
+      <List>
+        {navItems.map((item) => (
+          <ListItem key={item.href} disablePadding>
+            <ListItemButton
+              component={Link}
+              href={item.href}
+              selected={pathname === item.href}
+              sx={{
+                textAlign: "center",
+                "&.Mui-selected": { bgcolor: "primary.light", color: "white" },
+              }}
+            >
+              <ListItemText primary={item.label} primaryTypographyProps={{ fontWeight: 600 }} />
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
       {isLoggedIn && (
         <>
-          <List>
-            {navItems.map((item) => (
-              <ListItem key={item.href} disablePadding>
-                <ListItemButton
-                  component={Link}
-                  href={item.href}
-                  selected={pathname === item.href}
-                  sx={{
-                    textAlign: "center",
-                    "&.Mui-selected": { bgcolor: "primary.light", color: "white" },
-                  }}
-                >
-                  <ListItemText primary={item.label} primaryTypographyProps={{ fontWeight: 600 }} />
-                </ListItemButton>
-              </ListItem>
-            ))}
-          </List>
           <Divider />
           <List>
             <ListItem disablePadding>
@@ -132,100 +114,111 @@ export default function RootLayout({
     </Box>
   );
 
+  // 4. Render chính
+  if (checkingAuth) {
+    return (
+      <html lang="vi">
+        <body>
+          <Box sx={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
+            <CircularProgress color="primary" />
+          </Box>
+        </body>
+      </html>
+    );
+  }
+
   return (
     <html lang="vi">
       <body>
         <QueryClientProvider client={queryClient}>
           <CssBaseline />
           <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-            {/* Ẩn AppBar nếu đang ở trang Login để giao diện tập trung hơn */}
-            {pathname !== "/login" && (
-              <AppBar
-                position="sticky"
-                elevation={0}
-                sx={{
-                  borderBottom: "1px solid",
-                  borderColor: "divider",
-                  bgcolor: "rgba(255, 255, 255, 0.8)",
-                  backdropFilter: "blur(8px)",
-                  color: "text.primary",
-                  zIndex: (theme) => theme.zIndex.drawer + 1,
-                }}
-              >
-                <Container maxWidth="lg">
-                  <Toolbar disableGutters>
-                    {isLoggedIn && (
-                      <IconButton
-                        color="inherit"
-                        edge="start"
-                        onClick={handleDrawerToggle}
-                        sx={{ mr: 2, display: { md: "none" } }}
+            <AppBar
+              position="sticky"
+              elevation={0}
+              sx={{
+                borderBottom: "1px solid",
+                borderColor: "divider",
+                bgcolor: "rgba(255, 255, 255, 0.8)",
+                backdropFilter: "blur(8px)",
+                color: "text.primary",
+                zIndex: (theme) => theme.zIndex.drawer + 1,
+              }}
+            >
+              <Container maxWidth="lg">
+                <Toolbar disableGutters>
+                  <IconButton
+                    color="inherit"
+                    edge="start"
+                    onClick={handleDrawerToggle}
+                    sx={{ mr: 2, display: { md: "none" } }}
+                  >
+                    <MenuIcon />
+                  </IconButton>
+
+                  <Typography
+                    variant="h6"
+                    component={Link}
+                    href="/"
+                    sx={{
+                      flexGrow: 1,
+                      textDecoration: "none",
+                      color: "primary.main",
+                      fontWeight: 800,
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    CDNVIETPQ
+                  </Typography>
+
+                  <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center" }}>
+                    {navItems.map((item) => (
+                      <Button
+                        key={item.href}
+                        component={Link}
+                        href={item.href}
+                        sx={{
+                          ml: 2,
+                          fontWeight: 700,
+                          textTransform: "none",
+                          color: pathname === item.href ? "primary.main" : "text.secondary",
+                        }}
                       >
-                        <MenuIcon />
-                      </IconButton>
-                    )}
-
-                    <Typography
-                      variant="h6"
-                      component={Link}
-                      href="/"
-                      sx={{
-                        flexGrow: 1,
-                        textDecoration: "none",
-                        color: "primary.main",
-                        fontWeight: 800,
-                        letterSpacing: "-1px",
-                        display: "flex",
-                        alignItems: "center",
-                      }}
-                    >
-                      CDNVIETPQ
-                    </Typography>
-
-                    {isLoggedIn && (
-                      <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center" }}>
-                        {navItems.map((item) => (
-                          <Button
-                            key={item.href}
-                            component={Link}
-                            href={item.href}
-                            sx={{
-                              ml: 2,
-                              fontWeight: 700,
-                              textTransform: "none",
-                              color: pathname === item.href ? "primary.main" : "text.secondary",
-                              position: "relative",
-                              "&::after": pathname === item.href ? {
-                                content: '""',
-                                position: "absolute",
-                                bottom: 5,
-                                left: "10%",
-                                width: "80%",
-                                height: "3px",
-                                bgcolor: "primary.main",
-                                borderRadius: "10px",
-                              } : {},
-                            }}
-                          >
-                            {item.label}
-                          </Button>
-                        ))}
+                        {item.label}
+                      </Button>
+                    ))}
+                    
+                    {isLoggedIn ? (
+                      <Button
+                        onClick={handleLogout}
+                        variant="outlined"
+                        color="error"
+                        size="small"
+                        startIcon={<LogoutIcon />}
+                        sx={{ ml: 4, borderRadius: 2, fontWeight: 700, textTransform: "none" }}
+                      >
+                        Thoát
+                      </Button>
+                    ) : (
+                      pathname !== "/login" && (
                         <Button
-                          onClick={handleLogout}
-                          variant="outlined"
-                          color="error"
+                          component={Link}
+                          href="/login"
+                          variant="contained"
+                          color="primary"
                           size="small"
-                          startIcon={<LogoutIcon />}
+                          startIcon={<AccountCircleIcon />}
                           sx={{ ml: 4, borderRadius: 2, fontWeight: 700, textTransform: "none" }}
                         >
-                          Thoát
+                          Đăng nhập
                         </Button>
-                      </Box>
+                      )
                     )}
-                  </Toolbar>
-                </Container>
-              </AppBar>
-            )}
+                  </Box>
+                </Toolbar>
+              </Container>
+            </AppBar>
 
             <Drawer
               variant="temporary"
@@ -240,7 +233,7 @@ export default function RootLayout({
               {drawer}
             </Drawer>
 
-            <Box component="main" sx={{ flexGrow: 1, py: pathname === "/login" ? 0 : { xs: 2, md: 4 } }}>
+            <Box component="main" sx={{ flexGrow: 1, py: { xs: 2, md: 4 } }}>
               {children}
             </Box>
           </Box>
