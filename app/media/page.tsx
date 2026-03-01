@@ -1,90 +1,63 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import {
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  Button,
-  Typography,
-  Pagination,
-  Stack,
-} from "@mui/material";
-import Link from "next/link";
 import { api } from "@/lib/api";
-import { Media, Pagination as PaginationType } from "@/lib/types";
 
-export default function MediaPage() {
-  const [data, setData] = useState<Media[]>([]);
-  const [pagination, setPagination] =
-    useState<PaginationType | null>(null);
-  const [page, setPage] = useState(1);
+interface MediaItem {
+  id: string;
+  filename: string;
+  mime_type: string;
+  size: number;
+  created_at: string;
+  r2_key: string;
+  visibility: string;
+}
 
-  const fetchData = async (pageNumber: number) => {
-    const res = await api.get(`/media?page=${pageNumber}&limit=10`);
-    setData(res.data.data);
-    setPagination(res.data.pagination);
+interface MediaResponse {
+  success: boolean;
+  data: MediaItem[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
   };
+}
 
-  useEffect(() => {
-    fetchData(page);
-  }, [page]);
+export default async function MediaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; limit?: string }>;
+}) {
+  const params = await searchParams;
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this media?")) return;
-    await api.delete(`/media/${id}`);
-    fetchData(page);
-  };
+  const page = Number(params.page || 1);
+  const limit = Number(params.limit || 10);
+
+  const response = await api.get<MediaResponse>(
+    `/media?page=${page}&limit=${limit}`
+  );
+
+  const items = response.data;
 
   return (
-    <>
-      <Typography variant="h5" gutterBottom>
-        Media List
-      </Typography>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-6">Media</h1>
 
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Filename</TableCell>
-            <TableCell>Size</TableCell>
-            <TableCell>Visibility</TableCell>
-            <TableCell>Action</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {data.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell>{item.filename}</TableCell>
-              <TableCell>{item.size}</TableCell>
-              <TableCell>{item.visibility}</TableCell>
-              <TableCell>
-                <Link href={`/media/${item.id}`}>
-                  <Button size="small">View</Button>
-                </Link>
-                <Button
-                  size="small"
-                  color="error"
-                  onClick={() => handleDelete(item.id)}
-                >
-                  Delete
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {items.map((item) => (
+          <div key={item.id} className="border rounded-lg p-3">
+            <p className="font-medium text-sm break-all">
+              {item.filename}
+            </p>
 
-      {pagination && (
-        <Stack spacing={2} sx={{ mt: 3 }}>
-          <Pagination
-            count={pagination.totalPages}
-            page={page}
-            onChange={(_, value) => setPage(value)}
-          />
-        </Stack>
-      )}
-    </>
+            <p className="text-xs text-gray-500 mt-1">
+              {new Date(item.created_at).toLocaleString()}
+            </p>
+
+            <p className="text-xs text-gray-400 mt-1">
+              {(item.size / 1024).toFixed(1)} KB
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
-}
+} 
