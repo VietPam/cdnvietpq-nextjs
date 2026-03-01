@@ -9,7 +9,6 @@ import {
   CardContent,
   Box,
   Button,
-  Stack,
   Avatar,
   Paper,
 } from "@mui/material";
@@ -21,7 +20,6 @@ import ShieldIcon from "@mui/icons-material/Shield";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
 export default function HomePage() {
-  // Dữ liệu mẫu cho các ô thống kê
   const stats = [
     { label: "Tổng số tệp", value: "1,254", icon: <PhotoLibraryIcon />, color: "#1976d2" },
     { label: "Dung lượng đã dùng", value: "45.8 GB", icon: <StorageIcon />, color: "#2e7d32" },
@@ -29,23 +27,21 @@ export default function HomePage() {
   ];
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
-      {/* Header Section */}
+    <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
       <Box sx={{ mb: 6, textAlign: { xs: "center", md: "left" } }}>
         <Typography 
           variant="h3" 
           fontWeight={800} 
           gutterBottom 
-          sx={{ letterSpacing: "-1px", fontSize: { xs: '2rem', md: '3rem' } }}
+          sx={{ letterSpacing: "-1px", fontSize: { xs: '2.2rem', md: '3.5rem' } }}
         >
           Chào mừng trở lại, <Box component="span" sx={{ color: "primary.main" }}>Admin</Box>
         </Typography>
-        <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, opacity: 0.8 }}>
-          Quản lý tài nguyên nội dung của bạn một cách tập trung và hiệu quả.
+        <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, opacity: 0.8, maxWidth: 600 }}>
+          Hệ thống quản trị CDN tối ưu. Theo dõi lưu lượng và quản lý tệp tin của bạn tại đây.
         </Typography>
       </Box>
 
-      {/* Stats Section - SỬA LỖI GRID TẠI ĐÂY */}
       <Grid container spacing={3} sx={{ mb: 6 }}>
         {stats.map((stat, index) => (
           <Grid key={index} size={{ xs: 12, sm: 4 }}>
@@ -60,19 +56,20 @@ export default function HomePage() {
                 gap: 2,
                 transition: "0.3s",
                 "&:hover": { 
-                  boxShadow: "0 8px 24px rgba(0,0,0,0.05)",
-                  borderColor: 'primary.light' 
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+                  borderColor: 'primary.light',
+                  transform: 'translateY(-5px)'
                 }
               }}
             >
-              <Avatar sx={{ bgcolor: `${stat.color}15`, color: stat.color, width: 56, height: 56 }}>
+              <Avatar sx={{ bgcolor: `${stat.color}15`, color: stat.color, width: 60, height: 60 }}>
                 {stat.icon}
               </Avatar>
               <Box>
-                <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ textTransform: 'uppercase' }}>
+                <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: 'uppercase' }}>
                   {stat.label}
                 </Typography>
-                <Typography variant="h5" fontWeight={700}>
+                <Typography variant="h4" fontWeight={800}>
                   {stat.value}
                 </Typography>
               </Box>
@@ -81,27 +78,26 @@ export default function HomePage() {
         ))}
       </Grid>
 
-      {/* Quick Actions Section - SỬA LỖI GRID TẠI ĐÂY */}
       <Grid container spacing={4}>
-        {/* Gallery Box */}
         <Grid size={{ xs: 12, md: 7 }}>
           <Card
             elevation={0}
             sx={{
               height: "100%",
-              borderRadius: 5,
+              borderRadius: 6,
               background: "linear-gradient(135deg, #1976d2 0%, #1565c0 100%)",
               color: "white",
               position: "relative",
               overflow: "hidden",
+              boxShadow: '0 20px 40px rgba(25, 118, 210, 0.2)'
             }}
           >
-            <CardContent sx={{ p: { xs: 3, md: 5 }, position: "relative", zIndex: 1 }}>
-              <Typography variant="h4" fontWeight={700} gutterBottom>
-                Thư viện hình ảnh
+            <CardContent sx={{ p: { xs: 4, md: 6 }, position: "relative", zIndex: 1 }}>
+              <Typography variant="h3" fontWeight={800} gutterBottom>
+                Thư viện
               </Typography>
-              <Typography sx={{ mb: 4, opacity: 0.9, maxWidth: "90%" }}>
-                Xem toàn bộ danh sách tệp tin đã tải lên, quản lý quyền truy cập và lấy đường dẫn CDN ngay lập tức.
+              <Typography sx={{ mb: 4, opacity: 0.9, fontSize: '1.1rem' }}>
+                Khám phá kho lưu trữ dữ liệu tập trung. Quản lý hàng ngàn tệp tin chỉ với vài cú click.
               </Typography>
               <Button
                 component={Link}
@@ -112,70 +108,69 @@ export default function HomePage() {
                 sx={{
                   bgcolor: "white",
                   color: "primary.main",
-                  fontWeight: 700,
+                  fontWeight: 800,
                   px: 4,
-                  py: 1.5,
+                  py: 1.8,
                   borderRadius: 3,
                   textTransform: 'none',
-                  fontSize: '1rem',
-                  "&:hover": { bgcolor: "#f5f5f5" },
+                  fontSize: '1.1rem',
+                  "&:hover": { bgcolor: "#f0f0f0" },
                 }}
               >
-                View My Gallery
+                Mở thư viện ngay
               </Button>
             </CardContent>
-            {/* Background Icon Decoration */}
             <PhotoLibraryIcon
               sx={{
                 position: "absolute",
-                right: -20,
-                bottom: -20,
-                fontSize: 200,
+                right: -30,
+                bottom: -30,
+                fontSize: 250,
                 opacity: 0.1,
-                transform: "rotate(-15deg)",
+                transform: "rotate(-10deg)",
               }}
             />
           </Card>
         </Grid>
 
-        {/* Upload Box */}
         <Grid size={{ xs: 12, md: 5 }}>
           <Card
             elevation={0}
             variant="outlined"
             sx={{
               height: "100%",
-              borderRadius: 5,
+              borderRadius: 6,
               display: "flex",
               flexDirection: "column",
               justifyContent: "center",
-              p: 3,
+              p: 4,
               borderStyle: "dashed",
               borderWidth: 2,
-              borderColor: "divider",
+              borderColor: "primary.light",
               textAlign: "center",
               transition: '0.3s',
-              "&:hover": { borderColor: 'primary.main', bgcolor: 'rgba(25, 118, 210, 0.02)' }
+              "&:hover": { bgcolor: 'rgba(25, 118, 210, 0.03)' }
             }}
           >
             <CardContent>
-              <Avatar sx={{ bgcolor: "primary.light", width: 64, height: 64, mx: "auto", mb: 2 }}>
-                <CloudUploadIcon sx={{ color: 'white' }} />
+              <Avatar sx={{ bgcolor: "primary.main", width: 70, height: 70, mx: "auto", mb: 3 }}>
+                <CloudUploadIcon sx={{ fontSize: 35 }} />
               </Avatar>
-              <Typography variant="h5" fontWeight={700} gutterBottom>
-                Tải lên tệp mới
+              <Typography variant="h4" fontWeight={800} gutterBottom>
+                Tải lên
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Hỗ trợ hình ảnh, video và tệp âm thanh.<br />Giới hạn dung lượng theo gói của bạn.
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+                Kéo thả hoặc chọn tệp từ máy tính để bắt đầu tối ưu hóa nội dung của bạn.
               </Typography>
               <Button
                 component={Link}
                 href="/media/upload"
-                variant="outlined"
+                variant="contained"
                 fullWidth
-                sx={{ borderRadius: 3, py: 1.2, fontWeight: 700, textTransform: 'none' }}
+                size="large"
+                sx={{ borderRadius: 3, py: 2, fontWeight: 800, textTransform: 'none' }}
               >
-                Upload Now
+                Bắt đầu tải lên
               </Button>
             </CardContent>
           </Card>

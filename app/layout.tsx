@@ -17,13 +17,15 @@ import {
   Button,
   useMediaQuery,
   useTheme,
+  Divider,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// Định nghĩa danh sách điều hướng để dùng chung cho cả Desk và Mobile
+// Thêm Dashboard vào đầu danh sách navItems
 const navItems = [
+  { label: "Dashboard", href: "/" },
   { label: "Thư viện", href: "/media" },
   { label: "Tải lên", href: "/media/upload" },
 ];
@@ -38,11 +40,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     setMobileOpen((prevState) => !prevState);
   };
 
-  // Giao diện của Drawer (Menu bên hông)
   const drawer = (
     <Box onClick={handleDrawerToggle} sx={{ width: 250, textAlign: "center" }}>
-      <Typography variant="h6" sx={{ my: 2, fontWeight: 700 }}>
-        CDN ADMIN
+      <Typography variant="h6" sx={{ my: 2, fontWeight: 800, color: 'primary.main' }}>
+        CDNVIETPQ
       </Typography>
       <Divider />
       <List>
@@ -52,9 +53,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               component={Link}
               href={item.href}
               selected={pathname === item.href}
-              sx={{ textAlign: "center" }}
+              sx={{ 
+                textAlign: "center",
+                "&.Mui-selected": { bgcolor: "primary.light", color: "white" }
+              }}
             >
-              <ListItemText primary={item.label} />
+              <ListItemText primary={item.label} primaryTypographyProps={{ fontWeight: 600 }} />
             </ListItemButton>
           </ListItem>
         ))}
@@ -67,13 +71,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <CssBaseline />
         <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-          <AppBar position="sticky" elevation={0} sx={{ borderBottom: "1px solid", borderColor: "divider", bgcolor: "background.paper", color: "text.primary" }}>
+          <AppBar 
+            position="sticky" 
+            elevation={0} 
+            sx={{ 
+              borderBottom: "1px solid", 
+              borderColor: "divider", 
+              bgcolor: "rgba(255, 255, 255, 0.8)", 
+              backdropFilter: "blur(8px)", // Hiệu ứng mờ hiện đại
+              color: "text.primary" 
+            }}
+          >
             <Container maxWidth="lg">
               <Toolbar disableGutters>
-                {/* Nút Hamburger cho Mobile */}
                 <IconButton
                   color="inherit"
-                  aria-label="open drawer"
                   edge="start"
                   onClick={handleDrawerToggle}
                   sx={{ mr: 2, display: { md: "none" } }}
@@ -81,22 +93,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <MenuIcon />
                 </IconButton>
 
+                {/* Logo redirect về Home */}
                 <Typography
                   variant="h6"
                   component={Link}
-                  href="/media"
+                  href="/"
                   sx={{
                     flexGrow: 1,
                     textDecoration: "none",
                     color: "primary.main",
                     fontWeight: 800,
-                    letterSpacing: "-0.5px",
+                    letterSpacing: "-1px",
+                    display: "flex",
+                    alignItems: "center"
                   }}
                 >
                   CDNVIETPQ
                 </Typography>
 
-                {/* Menu cho Desktop */}
+                {/* Desktop Menu */}
                 <Box sx={{ display: { xs: "none", md: "block" } }}>
                   {navItems.map((item) => (
                     <Button
@@ -105,11 +120,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                       href={item.href}
                       sx={{
                         ml: 2,
-                        fontWeight: 600,
+                        fontWeight: 700,
+                        textTransform: 'none',
                         color: pathname === item.href ? "primary.main" : "text.secondary",
-                        borderBottom: pathname === item.href ? "2px solid" : "none",
-                        borderRadius: 0,
-                        "&:hover": { bgcolor: "transparent", color: "primary.main" },
+                        position: 'relative',
+                        "&::after": pathname === item.href ? {
+                          content: '""',
+                          position: 'absolute',
+                          bottom: 5,
+                          left: '10%',
+                          width: '80%',
+                          height: '3px',
+                          bgcolor: 'primary.main',
+                          borderRadius: '10px'
+                        } : {}
                       }}
                     >
                       {item.label}
@@ -120,13 +144,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Container>
           </AppBar>
 
-          {/* Thành phần Drawer cho Mobile */}
           <nav>
             <Drawer
               variant="temporary"
               open={mobileOpen}
               onClose={handleDrawerToggle}
-              ModalProps={{ keepMounted: true }} // Tăng hiệu năng trên mobile
+              ModalProps={{ keepMounted: true }}
               sx={{
                 display: { xs: "block", md: "none" },
                 "& .MuiDrawer-paper": { boxSizing: "border-box", width: 250 },
@@ -136,23 +159,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Drawer>
           </nav>
 
-          <Box component="main" sx={{ flexGrow: 1, py: 4 }}>
-            <Container maxWidth="lg">
-              {children}
-            </Container>
-          </Box>
-          
-          {/* Footer đơn giản */}
-          <Box component="footer" sx={{ py: 3, textAlign: 'center', borderTop: '1px solid', borderColor: 'divider', mt: 'auto' }}>
-             <Typography variant="caption" color="text.secondary">
-               © 2026 CDNVIETPQ Admin Panel
-             </Typography>
+          <Box component="main" sx={{ flexGrow: 1, py: { xs: 2, md: 4 } }}>
+            {children}
           </Box>
         </Box>
       </body>
     </html>
   );
 }
-
-// Import bổ sung nếu thiếu
-import { Divider } from "@mui/material";
