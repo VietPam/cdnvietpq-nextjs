@@ -1,206 +1,146 @@
 "use client";
-
-import React, { useState } from "react";
-import {
-  Button,
-  Typography,
-  TextField,
-  MenuItem,
-  Stack,
-  Container,
-  Paper,
-  Box,
-  IconButton,
-  LinearProgress,
-  Alert,
-  Grid,
-} from "@mui/material";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { Container, Paper, Stack, Typography, Box, Button, LinearProgress, Alert, IconButton, Fade } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DeleteIcon from "@mui/icons-material/Delete";
-import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+// Đồng bộ cấu hình từ Backend
+const MAX_IMAGE_SIZE = 500 * 1024; // 500KB
+const MAX_VIDEO_SIZE = 1 * 1024 * 1024; // 1MB
+const ALLOWED_IMAGE_EXT = ["jpg", "jpeg", "png", "webp"];
+const ALLOWED_VIDEO_EXT = ["mp4"];
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [visibility, setVisibility] = useState("public");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const router = useRouter();
 
+  useEffect(() => {
+    return () => { if (previewUrl) URL.revokeObjectURL(previewUrl); };
+  }, [previewUrl]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      setMessage(null);
-      // Tạo preview nếu là ảnh để giao diện sinh động hơn
-      if (selectedFile.type.startsWith("image/")) {
-        setPreview(URL.createObjectURL(selectedFile));
-      } else {
-        setPreview(null);
-      }
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+
+    const ext = selected.name.split(".").pop()?.toLowerCase() || "";
+    const isImage = ALLOWED_IMAGE_EXT.includes(ext);
+    const isVideo = ALLOWED_VIDEO_EXT.includes(ext);
+
+    // 1. Validate định dạng
+    if (!isImage && !isVideo) {
+      return setMessage({
+        type: "error",
+        text: `Định dạng .${ext} không được hỗ trợ. Chỉ nhận: ${[...ALLOWED_IMAGE_EXT, ...ALLOWED_VIDEO_EXT].join(", ")}`
+      });
     }
+
+    // 2. Validate dung lượng theo loại tệp
+    if (isImage && selected.size > MAX_IMAGE_SIZE) {
+      return setMessage({ type: "error", text: "Ảnh không được vượt quá 500KB!" });
+    }
+    if (isVideo && selected.size > MAX_VIDEO_SIZE) {
+      return setMessage({ type: "error", text: "Video không được vượt quá 1MB!" });
+    }
+
+    // Nếu pass tất cả validate
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(URL.createObjectURL(selected));
+    setFile(selected);
+    setMessage(null);
   };
 
   const handleUpload = async () => {
-    if (!file) {
-      setMessage({ type: "error", text: "Vui lòng chọn một tệp tin!" });
-      return;
-    }
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("visibility", "public");
 
+    setLoading(true);
     try {
-      setLoading(true);
-      setMessage(null);
-
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("visibility", visibility);
-
-      const res = await fetch(`${BACKEND_URL}/upload`, {
-        method: "POST",
-        headers: {
-          "x-api-key": API_KEY || "",
-        },
-        body: formData,
+      await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/upload`, formData, {
+        headers: { "x-api-key": process.env.NEXT_PUBLIC_API_KEY },
+        onUploadProgress: (p) => setProgress(Math.round((p.loaded * 100) / (p.total || 100)))
       });
-
-      if (!res.ok) {
-        throw new Error("Upload failed");
-      }
-
-      setMessage({ type: "success", text: "Tải lên thành công! Đang chuyển hướng..." });
-      
-      // Chuyển hướng sau khi thành công
-      setTimeout(() => {
-        router.push("/media");
-      }, 1500);
-
+      setMessage({ type: "success", text: "Tải lên thành công!" });
+      setTimeout(() => router.push("/media"), 1000);
     } catch (err) {
-      console.error("Upload error:", err);
-      setMessage({ type: "error", text: "Lỗi khi tải lên. Vui lòng kiểm tra kết nối." });
+      setMessage({ type: "error", text: "Lỗi tải lên tệp!" });
     } finally {
       setLoading(false);
     }
   };
 
-  const clearFile = () => {
-    setFile(null);
-    setPreview(null);
-  };
-
   return (
     <Container maxWidth="sm" sx={{ py: 4 }}>
-      <Paper elevation={0} variant="outlined" sx={{ p: 4, borderRadius: 4 }}>
-        <Stack spacing={4}>
+      <Paper variant="outlined" sx={{ p: 4, borderRadius: 4 }}>
+        <Stack spacing={3}>
           <Box>
-            <Typography variant="h4" fontWeight={800} gutterBottom>
-              Tải lên Media
-            </Typography>
+            <Typography variant="h5" fontWeight={800} gutterBottom>Tải lên Media</Typography>
             <Typography variant="body2" color="text.secondary">
-              Tải tệp tin trực tiếp lên Cloudflare Workers & R2 Storage.
+              Giới hạn: Ảnh (500KB), Video (1MB)
             </Typography>
           </Box>
 
-          {/* Khu vực Dropzone / Chọn file */}
-          <Box
-            sx={{
-              border: "2px dashed",
-              borderColor: file ? "primary.main" : "divider",
-              borderRadius: 3,
-              p: 3,
-              textAlign: "center",
-              bgcolor: file ? "rgba(25, 118, 210, 0.02)" : "grey.50",
-              transition: "0.3s",
-              position: "relative"
-            }}
-          >
+          <Box sx={{
+            border: "2px dashed",
+            borderColor: file ? "primary.main" : "grey.300",
+            p: 3, textAlign: 'center', borderRadius: 3,
+            bgcolor: file ? 'rgba(25, 118, 210, 0.04)' : 'grey.50'
+          }}>
             {!file ? (
-              <Stack alignItems="center" spacing={2}>
-                <CloudUploadIcon sx={{ fontSize: 48, color: "text.disabled" }} />
-                <Typography variant="body1" fontWeight={600}>
-                  Kéo thả hoặc nhấn để tải lên
-                </Typography>
-                <Button variant="contained" component="label" size="small">
+              <Stack spacing={2} alignItems="center">
+                <CloudUploadIcon sx={{ fontSize: 48, color: "grey.400" }} />
+                <Button variant="contained" component="label">
                   Chọn tệp
-                  <input type="file" hidden onChange={handleFileChange} />
+                  <input type="file" hidden onChange={handleFileChange}
+                    accept=".jpg,.jpeg,.png,.webp,.mp4" />
                 </Button>
               </Stack>
             ) : (
-              <Stack direction="row" spacing={2} alignItems="center" justifyContent="center">
-                {preview ? (
-                  <Box 
-                    component="img" 
-                    src={preview} 
-                    sx={{ width: 60, height: 60, borderRadius: 1, objectFit: 'cover' }} 
-                  />
-                ) : (
-                  <InsertDriveFileIcon sx={{ fontSize: 40, color: "primary.main" }} />
-                )}
-                <Box sx={{ textAlign: 'left', flexGrow: 1, minWidth: 0 }}>
-                  <Typography variant="subtitle2" noWrap>{file.name}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {(file.size / 1024).toFixed(1)} KB
-                  </Typography>
-                </Box>
-                <IconButton onClick={clearFile} color="error" size="small">
-                  <DeleteIcon />
-                </IconButton>
-              </Stack>
+              <Fade in={!!file}>
+                <Stack spacing={2}>
+                  {/* Preview Area */}
+                  <Box sx={{ borderRadius: 2, overflow: 'hidden', width: '100%' }}>
+                    {file.type.startsWith("image/") ? (
+                      <Box sx={{ position: 'relative', height: 200 }}>
+                        <Image src={previewUrl!} alt="Preview" fill style={{ objectFit: 'contain' }} />
+                      </Box>
+                    ) : (
+                      <video src={previewUrl!} controls style={{ width: '100%', borderRadius: 8 }} />
+                    )}
+                  </Box>
+
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ bgcolor: 'white', p: 1.5, borderRadius: 2, border: '1px solid #eee' }}>
+                    <Typography variant="caption" noWrap sx={{ maxWidth: '70%' }}>{file.name}</Typography>
+                    <IconButton onClick={() => { setFile(null); setPreviewUrl(null); }} color="error" size="small">
+                      <DeleteIcon />
+                    </IconButton>
+                  </Stack>
+                </Stack>
+              </Fade>
             )}
           </Box>
 
-          {/* Cấu hình Visibility */}
-          <TextField
-            select
-            fullWidth
-            label="Chế độ hiển thị"
-            value={visibility}
-            onChange={(e) => setVisibility(e.target.value)}
-            disabled={loading}
-          >
-            <MenuItem value="public">Công khai (Public)</MenuItem>
-            <MenuItem value="private">Riêng tư (Private)</MenuItem>
-          </TextField>
-
-          {/* Thanh trạng thái khi đang load */}
           {loading && (
-            <Box sx={{ width: '100%' }}>
-              <Typography variant="caption" gutterBottom>Đang xử lý...</Typography>
-              <LinearProgress sx={{ height: 6, borderRadius: 3 }} />
+            <Box>
+              <Typography variant="caption">Tiến trình: {progress}%</Typography>
+              <LinearProgress variant="determinate" value={progress} sx={{ height: 8, borderRadius: 4 }} />
             </Box>
           )}
 
-          {/* Thông báo */}
-          {message && (
-            <Alert severity={message.type} sx={{ borderRadius: 2 }}>
-              {message.text}
-            </Alert>
-          )}
+          {message && <Alert severity={message.type}>{message.text}</Alert>}
 
-          {/* Nút bấm */}
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12 }}>
-              <Button
-                fullWidth
-                variant="contained"
-                size="large"
-                onClick={handleUpload}
-                disabled={loading || !file}
-                sx={{ 
-                  py: 1.5, 
-                  borderRadius: 2, 
-                  fontWeight: 700,
-                  textTransform: 'none',
-                  fontSize: '1rem'
-                }}
-              >
-                {loading ? "Đang tải lên..." : "Xác nhận tải lên"}
-              </Button>
-            </Grid>
-          </Grid>
+          <Button fullWidth variant="contained" size="large" onClick={handleUpload}
+            disabled={loading || !file} sx={{ py: 1.5, fontWeight: 700 }}>
+            {loading ? "Đang xử lý..." : "Xác nhận tải lên"}
+          </Button>
         </Stack>
       </Paper>
     </Container>

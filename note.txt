@@ -2,3 +2,5 @@ npm install @mui/material @emotion/react @emotion/styled @mui/icons-material axi
 
 ps aux | grep next
 kill -9 7743
+
+npm install @tanstack/react-query axios

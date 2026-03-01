@@ -22,16 +22,22 @@ import {
 import MenuIcon from "@mui/icons-material/Menu";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-// Thêm Dashboard vào đầu danh sách navItems
 const navItems = [
   { label: "Dashboard", href: "/" },
   { label: "Thư viện", href: "/media" },
   { label: "Tải lên", href: "/media/upload" },
 ];
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [queryClient] = useState(() => new QueryClient());
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const pathname = usePathname();
@@ -42,7 +48,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   const drawer = (
     <Box onClick={handleDrawerToggle} sx={{ width: 250, textAlign: "center" }}>
-      <Typography variant="h6" sx={{ my: 2, fontWeight: 800, color: 'primary.main' }}>
+      <Typography
+        variant="h6"
+        sx={{ my: 2, fontWeight: 800, color: "primary.main" }}
+      >
         CDNVIETPQ
       </Typography>
       <Divider />
@@ -53,12 +62,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               component={Link}
               href={item.href}
               selected={pathname === item.href}
-              sx={{ 
+              sx={{
                 textAlign: "center",
-                "&.Mui-selected": { bgcolor: "primary.light", color: "white" }
+                "&.Mui-selected": {
+                  bgcolor: "primary.light",
+                  color: "white",
+                },
               }}
             >
-              <ListItemText primary={item.label} primaryTypographyProps={{ fontWeight: 600 }} />
+              <ListItemText
+                primary={item.label}
+                primaryTypographyProps={{ fontWeight: 600 }}
+              />
             </ListItemButton>
           </ListItem>
         ))}
@@ -69,82 +84,93 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi">
       <body>
-        <CssBaseline />
-        <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-          <AppBar 
-            position="sticky" 
-            elevation={0} 
-            sx={{ 
-              borderBottom: "1px solid", 
-              borderColor: "divider", 
-              bgcolor: "rgba(255, 255, 255, 0.8)", 
-              backdropFilter: "blur(8px)", // Hiệu ứng mờ hiện đại
-              color: "text.primary" 
+        <QueryClientProvider client={queryClient}>
+          <CssBaseline />
+
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              minHeight: "100vh",
             }}
           >
-            <Container maxWidth="lg">
-              <Toolbar disableGutters>
-                <IconButton
-                  color="inherit"
-                  edge="start"
-                  onClick={handleDrawerToggle}
-                  sx={{ mr: 2, display: { md: "none" } }}
-                >
-                  <MenuIcon />
-                </IconButton>
+            <AppBar
+              position="sticky"
+              elevation={0}
+              sx={{
+                borderBottom: "1px solid",
+                borderColor: "divider",
+                bgcolor: "rgba(255, 255, 255, 0.8)",
+                backdropFilter: "blur(8px)",
+                color: "text.primary",
+              }}
+            >
+              <Container maxWidth="lg">
+                <Toolbar disableGutters>
+                  <IconButton
+                    color="inherit"
+                    edge="start"
+                    onClick={handleDrawerToggle}
+                    sx={{ mr: 2, display: { md: "none" } }}
+                  >
+                    <MenuIcon />
+                  </IconButton>
 
-                {/* Logo redirect về Home */}
-                <Typography
-                  variant="h6"
-                  component={Link}
-                  href="/"
-                  sx={{
-                    flexGrow: 1,
-                    textDecoration: "none",
-                    color: "primary.main",
-                    fontWeight: 800,
-                    letterSpacing: "-1px",
-                    display: "flex",
-                    alignItems: "center"
-                  }}
-                >
-                  CDNVIETPQ
-                </Typography>
+                  <Typography
+                    variant="h6"
+                    component={Link}
+                    href="/"
+                    sx={{
+                      flexGrow: 1,
+                      textDecoration: "none",
+                      color: "primary.main",
+                      fontWeight: 800,
+                      letterSpacing: "-1px",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    CDNVIETPQ
+                  </Typography>
 
-                {/* Desktop Menu */}
-                <Box sx={{ display: { xs: "none", md: "block" } }}>
-                  {navItems.map((item) => (
-                    <Button
-                      key={item.href}
-                      component={Link}
-                      href={item.href}
-                      sx={{
-                        ml: 2,
-                        fontWeight: 700,
-                        textTransform: 'none',
-                        color: pathname === item.href ? "primary.main" : "text.secondary",
-                        position: 'relative',
-                        "&::after": pathname === item.href ? {
-                          content: '""',
-                          position: 'absolute',
-                          bottom: 5,
-                          left: '10%',
-                          width: '80%',
-                          height: '3px',
-                          bgcolor: 'primary.main',
-                          borderRadius: '10px'
-                        } : {}
-                      }}
-                    >
-                      {item.label}
-                    </Button>
-                  ))}
-                </Box>
-              </Toolbar>
-            </Container>
-          </AppBar>
+                  <Box sx={{ display: { xs: "none", md: "block" } }}>
+                    {navItems.map((item) => (
+                      <Button
+                        key={item.href}
+                        component={Link}
+                        href={item.href}
+                        sx={{
+                          ml: 2,
+                          fontWeight: 700,
+                          textTransform: "none",
+                          color:
+                            pathname === item.href
+                              ? "primary.main"
+                              : "text.secondary",
+                          position: "relative",
+                          "&::after":
+                            pathname === item.href
+                              ? {
+                                  content: '""',
+                                  position: "absolute",
+                                  bottom: 5,
+                                  left: "10%",
+                                  width: "80%",
+                                  height: "3px",
+                                  bgcolor: "primary.main",
+                                  borderRadius: "10px",
+                                }
+                              : {},
+                        }}
+                      >
+                        {item.label}
+                      </Button>
+                    ))}
+                  </Box>
+                </Toolbar>
+              </Container>
+            </AppBar>
 
-          <nav>
             <Drawer
               variant="temporary"
               open={mobileOpen}
@@ -152,17 +178,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               ModalProps={{ keepMounted: true }}
               sx={{
                 display: { xs: "block", md: "none" },
-                "& .MuiDrawer-paper": { boxSizing: "border-box", width: 250 },
+                "& .MuiDrawer-paper": {
+                  boxSizing: "border-box",
+                  width: 250,
+                },
               }}
             >
               {drawer}
             </Drawer>
-          </nav>
 
-          <Box component="main" sx={{ flexGrow: 1, py: { xs: 2, md: 4 } }}>
-            {children}
+            <Box
+              component="main"
+              sx={{ flexGrow: 1, py: { xs: 2, md: 4 } }}
+            >
+              {children}
+            </Box>
           </Box>
-        </Box>
+        </QueryClientProvider>
       </body>
     </html>
   );
