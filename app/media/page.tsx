@@ -2,22 +2,23 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { 
-  Container, Card, Typography, Stack, Button, IconButton, 
-  Dialog, DialogTitle, DialogActions, Box, Pagination, Skeleton, 
-  Tooltip, ToggleButton, ToggleButtonGroup, Table, TableBody, TableCell, 
+import {
+  Container, Card, Typography, Stack, Button, IconButton,
+  Dialog, DialogTitle, DialogActions, Box, Pagination, Skeleton,
+  Tooltip, ToggleButton, ToggleButtonGroup, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, Alert, Snackbar, Chip
 } from "@mui/material";
 import Masonry from '@mui/lab/Masonry';
 import {
-  DeleteOutline, ContentCopy, Download, 
-  GridView, ViewList, ErrorOutline, CloudUpload
+  DeleteOutline, ContentCopy, Download,
+  GridView, ViewList, ErrorOutline, CloudUpload,
+  Visibility, PlayCircleOutline
 } from '@mui/icons-material';
 import { MediaRenderer } from "@/components/MediaRenderer";
 import { formatBytes } from "@/lib/utils";
 import Link from "next/link";
 
-// 1. Định nghĩa Interface
+// 1. Interface definitions
 interface MediaItem {
   id: string;
   filename: string;
@@ -42,19 +43,19 @@ export default function MediaPage() {
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [snackbar, setSnackbar] = useState<{ open: boolean, msg: string, type: 'success' | 'error' }>({ 
-    open: false, msg: '', type: 'success' 
+  const [snackbar, setSnackbar] = useState<{ open: boolean, msg: string, type: 'success' | 'error' }>({
+    open: false, msg: '', type: 'success'
   });
-  
+
   const queryClient = useQueryClient();
 
-  // 2. Fetch dữ liệu với React Query (Tăng limit để Masonry trông đầy đặn hơn)
+  // 2. Data Fetching
   const { data, isLoading, isError, refetch } = useQuery<MediaResponse>({
     queryKey: ['media', page],
     queryFn: () => api.get(`/media?page=${page}&limit=15`),
   });
 
-  // 3. Mutation xóa tệp (Optimistic Updates)
+  // 3. Delete Mutation (Optimistic)
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/media/${id}`),
     onMutate: async (id) => {
@@ -81,7 +82,7 @@ export default function MediaPage() {
     }
   });
 
-  // 4. Các hàm xử lý tiện ích
+  // 4. Utility Functions
   const copyToClipboard = (id: string) => {
     const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/media/${id}/file`;
     navigator.clipboard.writeText(url);
@@ -106,8 +107,6 @@ export default function MediaPage() {
     }
   };
 
-  // --- RENDERING LOGIC ---
-
   if (isError) return (
     <Container sx={{ py: 10, textAlign: 'center' }}>
       <ErrorOutline color="error" sx={{ fontSize: 60, mb: 2 }} />
@@ -120,7 +119,7 @@ export default function MediaPage() {
     <Container maxWidth="xl" sx={{ py: 4 }}>
       <Skeleton width={250} height={50} sx={{ mb: 4 }} />
       <Masonry columns={{ xs: 2, sm: 3, md: 4, lg: 5 }} spacing={1.5}>
-        {[300, 200, 400, 250, 350, 280, 180, 320, 240, 310].map((h, i) => (
+        {[300, 200, 400, 250, 350].map((h, i) => (
           <Skeleton key={i} variant="rectangular" height={h} sx={{ borderRadius: 3 }} />
         ))}
       </Masonry>
@@ -137,82 +136,104 @@ export default function MediaPage() {
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
-      {/* Header & View Toggle */}
+      {/* Header */}
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={4}>
         <Typography variant="h4" fontWeight={800} sx={{ letterSpacing: '-0.5px' }}>Thư viện Media</Typography>
-        <ToggleButtonGroup 
-          value={viewMode} 
-          exclusive 
-          onChange={(_, v) => v && setViewMode(v)} 
-          size="small"
-        >
+        <ToggleButtonGroup value={viewMode} exclusive onChange={(_, v) => v && setViewMode(v)} size="small">
           <ToggleButton value="grid"><GridView fontSize="small" /></ToggleButton>
           <ToggleButton value="list"><ViewList fontSize="small" /></ToggleButton>
         </ToggleButtonGroup>
       </Stack>
 
-      {/* Grid View (Masonry) */}
+      {/* Grid View - Optimized Masonry */}
       {viewMode === 'grid' ? (
         <Masonry columns={{ xs: 2, sm: 3, md: 4, lg: 5 }} spacing={1.5}>
           {data.data.map((item) => (
-            <Card 
+            <Card
               key={item.id}
-              sx={{ 
-                borderRadius: 3, 
-                position: 'relative',
-                border: 'none',
-                overflow: 'hidden',
-                backgroundColor: 'grey.100',
+              sx={{
+                borderRadius: 3, position: 'relative', border: 'none', overflow: 'hidden',
+                bgcolor: 'grey.100',
                 '&:hover .overlay-content': { opacity: 1 },
                 '&:hover img, &:hover video': { transform: 'scale(1.05)' }
               }}
             >
-              {/* Media Container */}
-              <Box sx={{ lineHeight: 0, overflow: 'hidden', transition: '0.3s' }}>
-                <MediaRenderer 
-                  url={`${process.env.NEXT_PUBLIC_BACKEND_URL}/media/${item.id}/file`} 
-                  mimeType={item.mime_type} 
-                  preview 
+              <Box sx={{ lineHeight: 0, overflow: 'hidden', transition: '0.4s' }}>
+                <MediaRenderer
+                  url={`${process.env.NEXT_PUBLIC_BACKEND_URL}/media/${item.id}/file`}
+                  mimeType={item.mime_type}
+                  preview
                 />
               </Box>
 
-              {/* Floating Metadata & Actions Overlay */}
-              <Box 
+              {/* Video Indicator Icon */}
+              {item.mime_type.startsWith('video/') && (
+                <Box sx={{
+                  position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                  color: 'white', opacity: 0.6, pointerEvents: 'none', zIndex: 1
+                }}>
+                  <PlayCircleOutline sx={{ fontSize: 48 }} />
+                </Box>
+              )}
+
+              {/* Seamless Hover Overlay */}
+              <Box
                 className="overlay-content"
                 sx={{
-                  position: 'absolute',
-                  top: 0, left: 0, right: 0, bottom: 0,
-                  background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 40%, transparent 100%)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  p: 1.5,
-                  opacity: 0, // Seamless Hover: Mặc định ẩn
-                  transition: 'opacity 0.3s ease-in-out',
-                  zIndex: 2
+                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                  background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.4) 100%)',
+                  display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                  p: 1.5, opacity: 0, transition: 'opacity 0.3s ease-in-out', zIndex: 2
                 }}
               >
-                {/* Nút hành động phía trên */}
+                {/* Top Actions */}
                 <Stack direction="row" justifyContent="flex-end" spacing={0.5}>
-                  <IconButton 
-                    size="small" 
-                    sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', '&:hover': { bgcolor: 'white', color: 'black' } }}
-                    onClick={(e) => { e.preventDefault(); copyToClipboard(item.id); }}
-                  >
-                    <ContentCopy fontSize="inherit" />
-                  </IconButton>
-                  <IconButton 
-                    size="small" 
-                    sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', '&:hover': { bgcolor: '#ff4444' } }}
-                    onClick={(e) => { e.preventDefault(); setDeleteId(item.id); }}
-                  >
-                    <DeleteOutline fontSize="inherit" />
-                  </IconButton>
+                  <Tooltip title="Xem chi tiết">
+                    <IconButton
+                      size="small"
+                      component={Link}
+                      href={`/media/${item.id}`}
+                      sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', '&:hover': { bgcolor: 'primary.main' } }}
+                    >
+                      <Visibility fontSize="inherit" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Copy link">
+                    <IconButton
+                      size="small"
+                      onClick={(e) => { e.preventDefault(); copyToClipboard(item.id); }}
+                      sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', '&:hover': { bgcolor: 'white', color: 'black' } }}
+                    >
+                      <ContentCopy fontSize="inherit" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Xóa">
+                    <IconButton
+                      size="small"
+                      onClick={(e) => { e.preventDefault(); setDeleteId(item.id); }}
+                      sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', '&:hover': { bgcolor: '#ff4444' } }}
+                    >
+                      <DeleteOutline fontSize="inherit" />
+                    </IconButton>
+                  </Tooltip>
                 </Stack>
 
-                {/* Thông tin tệp phía dưới */}
+                {/* Bottom Metadata */}
                 <Box>
-                  <Typography variant="caption" sx={{ color: 'white', fontWeight: 600, display: 'block', mb: 0.5, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
+                  <Typography
+                    variant="caption"
+                    noWrap // <--- Đưa ra ngoài sx như một prop trực tiếp
+                    sx={{
+                      color: 'white',
+                      fontWeight: 600,
+                      display: 'block',
+                      mb: 0.5,
+                      textShadow: '0 1px 4px rgba(0,0,0,0.8)',
+                      // Nếu muốn đảm bảo cắt chữ đẹp khi dùng block:
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
+                  >
                     {item.filename}
                   </Typography>
                   <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -220,8 +241,8 @@ export default function MediaPage() {
                       {formatBytes(item.size)}
                     </Typography>
                     <Tooltip title="Tải xuống">
-                      <IconButton 
-                        size="small" 
+                      <IconButton
+                        size="small"
                         sx={{ color: 'white', p: 0 }}
                         onClick={(e) => { e.preventDefault(); handleDownload(item.id, item.filename); }}
                       >
@@ -251,15 +272,16 @@ export default function MediaPage() {
               {data.data.map((item) => (
                 <TableRow key={item.id} hover>
                   <TableCell>
-                    <Box sx={{ width: 40, height: 40, borderRadius: 1, overflow: 'hidden' }}>
+                    <Box sx={{ width: 40, height: 40, borderRadius: 1.5, overflow: 'hidden' }}>
                       <MediaRenderer url={`${process.env.NEXT_PUBLIC_BACKEND_URL}/media/${item.id}/file`} mimeType={item.mime_type} preview />
                     </Box>
                   </TableCell>
                   <TableCell><Typography variant="body2" fontWeight={600} noWrap>{item.filename}</Typography></TableCell>
-                  <TableCell><Chip label={item.mime_type.split('/')[1]} size="small" variant="outlined" /></TableCell>
+                  <TableCell><Chip label={item.mime_type.split('/')[1]} size="small" variant="outlined" sx={{ borderRadius: 1 }} /></TableCell>
                   <TableCell>{formatBytes(item.size)}</TableCell>
                   <TableCell align="right">
                     <Stack direction="row" spacing={1} justifyContent="flex-end">
+                      <IconButton size="small" component={Link} href={`/media/${item.id}`}><Visibility fontSize="small" /></IconButton>
                       <IconButton size="small" onClick={() => copyToClipboard(item.id)}><ContentCopy fontSize="small" /></IconButton>
                       <IconButton size="small" color="error" onClick={() => setDeleteId(item.id)}><DeleteOutline fontSize="small" /></IconButton>
                     </Stack>
@@ -271,12 +293,12 @@ export default function MediaPage() {
         </TableContainer>
       )}
 
-      {/* Phân trang */}
+      {/* Pagination */}
       <Box display="flex" justifyContent="center" mt={6}>
-        <Pagination count={data.pagination.totalPages} page={page} onChange={(_, v) => setPage(v)} color="primary" />
+        <Pagination count={data.pagination.totalPages} page={page} onChange={(_, v) => setPage(v)} color="primary" shape="rounded" />
       </Box>
 
-      {/* Dialog xác nhận xóa */}
+      {/* Delete Dialog */}
       <Dialog open={Boolean(deleteId)} onClose={() => setDeleteId(null)}>
         <DialogTitle sx={{ fontWeight: 700 }}>Xác nhận xóa tệp?</DialogTitle>
         <DialogActions sx={{ p: 3 }}>
@@ -285,14 +307,14 @@ export default function MediaPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Thông báo Snackbar */}
-      <Snackbar 
-        open={snackbar.open} 
-        autoHideDuration={3000} 
+      {/* Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Alert severity={snackbar.type} variant="filled" sx={{ width: '100%' }}>{snackbar.msg}</Alert>
+        <Alert severity={snackbar.type} variant="filled" sx={{ width: '100%', borderRadius: 2 }}>{snackbar.msg}</Alert>
       </Snackbar>
     </Container>
   );
