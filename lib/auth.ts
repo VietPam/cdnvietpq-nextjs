@@ -1,23 +1,19 @@
 // src/lib/auth.ts
+import Cookies from 'js-cookie';
+
 export const auth = {
   setToken: (token: string) => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("cdn_token", token);
-    }
+    // Lưu vào cookie, tồn tại trong 7 ngày
+    Cookies.set('auth_token', token, { expires: 7, path: '/' });
   },
   getToken: () => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("cdn_token");
-    }
-    return null;
+    return Cookies.get('auth_token');
   },
   logout: () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("cdn_token");
-      window.location.href = "/login";
-    }
+    Cookies.remove('auth_token', { path: '/' });
+    window.location.href = '/login';
   },
   isLoggedIn: () => {
-    return !!auth.getToken();
+    return !!Cookies.get('auth_token');
   }
 };
