@@ -4,3 +4,5 @@ ps aux | grep next
 kill -9 7743
 
 npm install @tanstack/react-query axios
+
+npm install @mui/lab @mui/material @emotion/react @emotion/styled
