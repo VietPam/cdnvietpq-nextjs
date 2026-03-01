@@ -1,12 +1,13 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import {
   Container, Card, Typography, Stack, Button, IconButton,
   Dialog, DialogTitle, DialogActions, Box, Pagination, Skeleton,
   Tooltip, ToggleButton, ToggleButtonGroup, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Paper, Alert, Snackbar, Chip
+  TableContainer, TableHead, TableRow, Paper, Alert, Snackbar, Chip,
+  useTheme, useMediaQuery
 } from "@mui/material";
 import Masonry from '@mui/lab/Masonry';
 import {
@@ -48,6 +49,14 @@ export default function MediaPage() {
   });
 
   const queryClient = useQueryClient();
+  const theme = useTheme();
+
+  // Xác định số cột hiện tại dựa trên kích thước màn hình
+  const isXs = useMediaQuery(theme.breakpoints.down('sm'));
+  const isSm = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  const isMd = useMediaQuery(theme.breakpoints.between('md', 'lg'));
+  const isLg = useMediaQuery(theme.breakpoints.up('lg'));
+  const colCount = isLg ? 5 : isMd ? 4 : isSm ? 3 : 2;
 
   // 2. Data Fetching
   const { data, isLoading, isError, refetch } = useQuery<MediaResponse>({
@@ -55,7 +64,96 @@ export default function MediaPage() {
     queryFn: () => api.get(`/media?page=${page}&limit=15`),
   });
 
-  // 3. Delete Mutation (Optimistic)
+  // 3. Xử lý tính toán kích thước ảnh/video ngầm
+  const [dimensionsMap, setDimensionsMap] = useState<Record<string, number>>({});
+  const dimensionCache = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!data?.data) return;
+
+    let mounted = true;
+    const fetchDimensions = async () => {
+      const newMap = { ...dimensionCache.current };
+      let hasNew = false;
+
+      const promises = data.data.map(async (item) => {
+        if (newMap[item.id]) return; // Đã có trong cache thì bỏ qua
+
+        const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/media/${item.id}/file`;
+        try {
+          const ratio = await new Promise<number>((resolve) => {
+            if (item.mime_type.startsWith('video/')) {
+              const video = document.createElement('video');
+              video.onloadedmetadata = () => resolve(video.videoHeight / (video.videoWidth || 1));
+              video.onerror = () => resolve(1);
+              video.src = url;
+            } else {
+              const img = new window.Image();
+              img.onload = () => resolve(img.height / (img.width || 1));
+              img.onerror = () => resolve(1);
+              img.src = url;
+            }
+          });
+          newMap[item.id] = ratio;
+          hasNew = true;
+        } catch (e) {
+          newMap[item.id] = 1; // Fallback nếu lỗi
+          hasNew = true;
+        }
+      });
+
+      await Promise.all(promises);
+
+      if (mounted && hasNew) {
+        dimensionCache.current = newMap;
+        setDimensionsMap(newMap);
+      }
+    };
+
+    fetchDimensions();
+    return () => { mounted = false; };
+  }, [data?.data]);
+
+  // 4. Phân bổ thuật toán Zig-Zag Layout
+  const displayData = useMemo(() => {
+    if (!data?.data) return [];
+    
+    // Nếu chưa tính xong tỷ lệ khung hình cho tất cả ảnh hiện tại, trả về mảng rỗng để hiển thị loading
+    const allLoaded = data.data.every(item => dimensionsMap[item.id]);
+    if (!allLoaded && viewMode === 'grid') return [];
+
+    // Map dữ liệu kèm theo Aspect Ratio
+    const withRatio = data.data.map(item => ({
+      ...item,
+      aspectRatio: dimensionsMap[item.id] || 1
+    }));
+
+    // Sắp xếp giảm dần theo tỷ lệ (Ảnh dọc/cao nhất lên đầu)
+    withRatio.sort((a, b) => b.aspectRatio - a.aspectRatio);
+
+    // Xếp Zig-Zag vào mảng 1 chiều sao cho khi Masonry cắt bằng % colCount, nó sẽ ra các cột cân bằng
+    const result = new Array(withRatio.length);
+    for (let i = 0; i < withRatio.length; i++) {
+      const row = Math.floor(i / colCount);
+      const col = i % colCount;
+      const base = row * colCount;
+      const itemsInRow = Math.min(colCount, withRatio.length - base);
+      
+      let sortedIndex;
+      if (row % 2 === 0) {
+        // Dòng chẵn: rải từ trái sang phải
+        sortedIndex = base + col;
+      } else {
+        // Dòng lẻ: rải ngược từ phải sang trái (bù đắp chiều cao cho cột)
+        sortedIndex = base + (itemsInRow - 1 - col);
+      }
+      result[i] = withRatio[sortedIndex];
+    }
+    
+    return result;
+  }, [data?.data, dimensionsMap, colCount, viewMode]);
+
+  // 5. Delete Mutation (Optimistic)
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/media/${id}`),
     onMutate: async (id) => {
@@ -82,7 +180,7 @@ export default function MediaPage() {
     }
   });
 
-  // 4. Utility Functions
+  // 6. Utility Functions
   const copyToClipboard = (id: string) => {
     const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/media/${id}/file`;
     navigator.clipboard.writeText(url);
@@ -107,6 +205,7 @@ export default function MediaPage() {
     }
   };
 
+  // 7. Render Logic
   if (isError) return (
     <Container sx={{ py: 10, textAlign: 'center' }}>
       <ErrorOutline color="error" sx={{ fontSize: 60, mb: 2 }} />
@@ -115,11 +214,13 @@ export default function MediaPage() {
     </Container>
   );
 
-  if (isLoading) return (
+  // Hiển thị Skeleton nếu đang load API HOẶC đang chờ tính toán kích thước (để tránh bị giật khung hình)
+  const isLayoutCalculating = data?.data?.length && displayData.length === 0 && viewMode === 'grid';
+  if (isLoading || isLayoutCalculating) return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       <Skeleton width={250} height={50} sx={{ mb: 4 }} />
       <Masonry columns={{ xs: 2, sm: 3, md: 4, lg: 5 }} spacing={1.5}>
-        {[300, 200, 400, 250, 350].map((h, i) => (
+        {[300, 200, 400, 250, 350, 200, 400, 300].map((h, i) => (
           <Skeleton key={i} variant="rectangular" height={h} sx={{ borderRadius: 3 }} />
         ))}
       </Masonry>
@@ -145,10 +246,10 @@ export default function MediaPage() {
         </ToggleButtonGroup>
       </Stack>
 
-      {/* Grid View - Optimized Masonry */}
+      {/* Grid View - Render theo thuật toán Zig-Zag cân bằng */}
       {viewMode === 'grid' ? (
-        <Masonry columns={{ xs: 2, sm: 3, md: 4, lg: 5 }} spacing={1.5}>
-          {data.data.map((item) => (
+        <Masonry columns={colCount} spacing={1.5}>
+          {displayData.map((item) => (
             <Card
               key={item.id}
               sx={{
@@ -222,16 +323,10 @@ export default function MediaPage() {
                 <Box>
                   <Typography
                     variant="caption"
-                    noWrap // <--- Đưa ra ngoài sx như một prop trực tiếp
+                    noWrap
                     sx={{
-                      color: 'white',
-                      fontWeight: 600,
-                      display: 'block',
-                      mb: 0.5,
-                      textShadow: '0 1px 4px rgba(0,0,0,0.8)',
-                      // Nếu muốn đảm bảo cắt chữ đẹp khi dùng block:
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
+                      color: 'white', fontWeight: 600, display: 'block', mb: 0.5,
+                      textShadow: '0 1px 4px rgba(0,0,0,0.8)', overflow: 'hidden', textOverflow: 'ellipsis'
                     }}
                   >
                     {item.filename}
@@ -242,8 +337,7 @@ export default function MediaPage() {
                     </Typography>
                     <Tooltip title="Tải xuống">
                       <IconButton
-                        size="small"
-                        sx={{ color: 'white', p: 0 }}
+                        size="small" sx={{ color: 'white', p: 0 }}
                         onClick={(e) => { e.preventDefault(); handleDownload(item.id, item.filename); }}
                       >
                         <Download sx={{ fontSize: 18 }} />
@@ -308,12 +402,7 @@ export default function MediaPage() {
       </Dialog>
 
       {/* Snackbar */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
+      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
         <Alert severity={snackbar.type} variant="filled" sx={{ width: '100%', borderRadius: 2 }}>{snackbar.msg}</Alert>
       </Snackbar>
     </Container>
