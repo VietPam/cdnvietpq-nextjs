@@ -43,28 +43,100 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
   const handleCloseUserMenu = () => setAnchorEl(null);
 
+  // GIAO DIỆN DRAWER CHO MOBILE
   const drawer = (
-    <Box onClick={handleDrawerToggle} sx={{ width: 250, textAlign: "center" }}>
-      <Typography variant="h6" sx={{ my: 2, fontWeight: 800, color: "primary.main" }}>CDNVIETPQ</Typography>
+    <Box sx={{ width: 280, height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* 1. Phần Logo */}
+      <Box sx={{ p: 3, textAlign: 'center' }}>
+        <Typography variant="h6" sx={{ fontWeight: 800, color: "primary.main", letterSpacing: '-0.5px' }}>
+          CDNVIETPQ
+        </Typography>
+      </Box>
+
       <Divider />
-      <List>
+
+      {/* 2. Phần User (Nằm GIỮA Logo và Nav Items) */}
+      {isLoggedIn ? (
+        <Box sx={{ p: 3, bgcolor: 'rgba(0,0,0,0.02)', textAlign: 'center' }}>
+          <Avatar 
+            sx={{ 
+              bgcolor: 'primary.main', 
+              width: 60, 
+              height: 60, 
+              mx: 'auto', 
+              mb: 1.5, 
+              fontSize: '1.5rem', 
+              fontWeight: 700,
+              boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
+            }}
+          >
+            {user?.email?.charAt(0).toUpperCase()}
+          </Avatar>
+          <Typography variant="subtitle1" fontWeight={700} noWrap>
+            Administrator
+          </Typography>
+          <Typography variant="body2" color="text.secondary" noWrap sx={{ mb: 2 }}>
+            {user?.email}
+          </Typography>
+          <Button 
+            variant="outlined" 
+            color="error" 
+            size="small" 
+            fullWidth 
+            startIcon={<LogoutIcon />}
+            onClick={() => auth.logout()}
+            sx={{ borderRadius: 2, textTransform: 'none' }}
+          >
+            Đăng xuất
+          </Button>
+        </Box>
+      ) : (
+        <Box sx={{ p: 2 }}>
+          <Button 
+            component={Link} 
+            href="/login" 
+            variant="contained" 
+            fullWidth 
+            onClick={handleDrawerToggle}
+            sx={{ borderRadius: 2 }}
+          >
+            Đăng nhập ngay
+          </Button>
+        </Box>
+      )}
+
+      <Divider />
+
+      {/* 3. Phần Navigation Items */}
+      <List sx={{ px: 1, py: 2 }}>
         {navItems.map((item) => (
-          <ListItem key={item.href} disablePadding>
-            <ListItemButton component={Link} href={item.href} selected={pathname === item.href}>
-              <ListItemText primary={item.label} primaryTypographyProps={{ fontWeight: 600 }} />
+          <ListItem key={item.href} disablePadding sx={{ mb: 0.5 }}>
+            <ListItemButton 
+              component={Link} 
+              href={item.href} 
+              onClick={handleDrawerToggle}
+              selected={pathname === item.href}
+              sx={{ 
+                borderRadius: 2,
+                '&.Mui-selected': {
+                  bgcolor: 'primary.light',
+                  color: 'white',
+                  '&:hover': { bgcolor: 'primary.light' }
+                }
+              }}
+            >
+              <ListItemText 
+                primary={item.label} 
+                primaryTypographyProps={{ fontWeight: 600, fontSize: '0.95rem' }} 
+              />
             </ListItemButton>
           </ListItem>
         ))}
       </List>
-      {isLoggedIn && (
-        <>
-          <Divider />
-          <Box sx={{ p: 2 }}>
-            <Typography variant="body2" color="text.secondary" noWrap sx={{ mb: 1 }}>{user?.email}</Typography>
-            <Button fullWidth variant="outlined" color="error" size="small" onClick={() => auth.logout()}>Đăng xuất</Button>
-          </Box>
-        </>
-      )}
+
+      <Box sx={{ mt: 'auto', p: 2, textAlign: 'center' }}>
+        <Typography variant="caption" color="text.disabled">v1.0.2 Build 2024</Typography>
+      </Box>
     </Box>
   );
 
@@ -106,7 +178,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                         <Tooltip title="Tài khoản">
                           <IconButton onClick={handleOpenUserMenu} sx={{ p: 0, ml: 3 }}>
                             <Avatar sx={{ bgcolor: 'primary.main', width: 35, height: 35, fontSize: '1rem', fontWeight: 700 }}>
-                              {user?.email?.charAt(0).toUpperCase() || "A"}
+                              {user?.email?.charAt(0).toUpperCase()}
                             </Avatar>
                           </IconButton>
                         </Tooltip>
@@ -147,7 +219,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </Container>
             </AppBar>
 
-            <Drawer variant="temporary" open={mobileOpen} onClose={handleDrawerToggle}>{drawer}</Drawer>
+            <Drawer 
+              variant="temporary" 
+              open={mobileOpen} 
+              onClose={handleDrawerToggle}
+              PaperProps={{ sx: { borderTopRightRadius: 16, borderBottomRightRadius: 16 } }}
+            >
+              {drawer}
+            </Drawer>
             
             <Box component="main" sx={{ flexGrow: 1, py: { xs: 2, md: 4 } }}>
               {children}
