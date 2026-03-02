@@ -23,6 +23,7 @@ import MediaSnackbar from "./components/MediaSnackbar"
 import { useMedia, useDeleteMedia } from "@/hooks/useMedia"
 import { buildMasonryLayout } from "@/utils/buildMasonryLayout"
 import { downloadMedia } from "@/utils/downloadMedia"
+import { copyToClipboard } from "@/utils/copyToClipboard"
 
 export default function MediaPage() {
   const [page, setPage] = useState(1)
@@ -36,10 +37,8 @@ export default function MediaPage() {
   })
 
   const theme = useTheme()
-
   const isMd = useMediaQuery(theme.breakpoints.between("md", "lg"))
   const isLg = useMediaQuery(theme.breakpoints.up("lg"))
-
   const colCount = isLg ? 5 : isMd ? 4 : 2
 
   const skeletonHeights = useMemo(
@@ -86,15 +85,23 @@ export default function MediaPage() {
     }
   }
 
-  const copyToClipboard = (id: string) => {
-    navigator.clipboard.writeText(
-      `${process.env.NEXT_PUBLIC_BACKEND_URL}/media/${id}/file`
-    )
-    setSnackbar({
-      open: true,
-      msg: "Đã sao chép liên kết!",
-      type: "success"
-    })
+  const handleCopy = async (id: string) => {
+    try {
+      await copyToClipboard(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/media/${id}/file`
+      )
+      setSnackbar({
+        open: true,
+        msg: "Đã sao chép liên kết!",
+        type: "success"
+      })
+    } catch {
+      setSnackbar({
+        open: true,
+        msg: "Không thể sao chép liên kết!",
+        type: "error"
+      })
+    }
   }
 
   const handleDeleteSuccess = () => {
@@ -149,7 +156,7 @@ export default function MediaPage() {
             <MediaGridView
               items={displayData.slice(0, visibleRows * colCount)}
               colCount={colCount}
-              onCopy={copyToClipboard}
+              onCopy={handleCopy}
               onDelete={setDeleteId}
               onDownload={handleDownload}
             />
