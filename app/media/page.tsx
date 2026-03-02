@@ -17,17 +17,13 @@ import MediaDeleteDialog from "./components/MediaDeleteDialog"
 import MediaHeader from "./components/MediaHeader"
 import { useMedia, useDeleteMedia } from "@/hooks/useMedia"
 import { buildMasonryLayout } from "@/utils/buildMasonryLayout"
-import { downloadMedia } from "@/utils/downloadMedia"
-import { copyToClipboard } from "@/utils/copyToClipboard"
-import { useGlobalSnackbar } from "@/contexts/GlobalSnackbarProvider"
 import { useMasonryReveal } from "@/hooks/useMasonryReveal"
+import { useMediaActions } from "@/hooks/useMediaActions"
 
 export default function MediaPage() {
   const [page, setPage] = useState(1)
   const [viewMode, setViewMode] = useState("grid")
   const [deleteId, setDeleteId] = useState<any>(null)
-
-  const { showSnackbar } = useGlobalSnackbar()
 
   const theme = useTheme()
   const isMd = useMediaQuery(theme.breakpoints.between("md", "lg"))
@@ -51,29 +47,12 @@ export default function MediaPage() {
     colCount
   )
 
+  const { handleDownload, handleCopy } = useMediaActions()
+
   const displayData = useMemo(() => {
     if (!data?.data) return []
     return buildMasonryLayout(data.data, colCount)
   }, [data?.data, colCount])
-
-  const handleDownload = async (id: any, filename: any) => {
-    try {
-      await downloadMedia(id, filename)
-    } catch {
-      showSnackbar("Không thể tải tệp xuống!", "error")
-    }
-  }
-
-  const handleCopy = async (id: any) => {
-    try {
-      await copyToClipboard(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/media/${id}/file`
-      )
-      showSnackbar("Đã sao chép liên kết!", "success")
-    } catch {
-      showSnackbar("Không thể sao chép liên kết!", "error")
-    }
-  }
 
   if (isError) return <MediaError refetch={refetch} />
 
