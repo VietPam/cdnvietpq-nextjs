@@ -105,11 +105,11 @@ export default function MediaDetailPage() {
             sx={{ 
               borderRadius: 4, 
               overflow: "hidden", 
-              bgcolor: "common.black", 
+              bgcolor: "transparent",
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center', 
-              minHeight: '500px'
+              minHeight: 'auto'
             }}
           >
             <MediaRenderer url={fileUrl} mimeType={item.mime_type} preview={false} />
