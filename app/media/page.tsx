@@ -1,108 +1,68 @@
 "use client"
-import React, { useState, useMemo } from "react"
 import {
   Container,
   Box,
-  Fade,
-  useTheme,
-  useMediaQuery
+  Fade
 } from "@mui/material"
-import MediaGridView from "./components/MediaGridView"
-import MediaListView from "./components/MediaListView"
 import MediaLoading from "./components/MediaLoading"
 import MediaEmpty from "./components/MediaEmpty"
 import MediaError from "./components/MediaError"
 import MediaDeleteDialog from "./components/MediaDeleteDialog"
 import MediaHeader from "./components/MediaHeader"
 import MediaPagination from "./components/MediaPagination"
-import { useMedia, useDeleteMedia } from "@/hooks/useMedia"
-import { buildMasonryLayout } from "@/utils/buildMasonryLayout"
-import { useMasonryReveal } from "@/hooks/useMasonryReveal"
-import { useMediaActions } from "@/hooks/useMediaActions"
+import MediaViewRenderer from "./components/MediaViewRenderer"
+import { useMediaPageController } from "@/hooks/useMediaPageController"
 
 export default function MediaPage() {
-  const [page, setPage] = useState(1)
-  const [viewMode, setViewMode] = useState("grid")
-  const [deleteId, setDeleteId] = useState<any>(null)
+  const controller = useMediaPageController()
 
-  const theme = useTheme()
-  const isMd = useMediaQuery(theme.breakpoints.between("md", "lg"))
-  const isLg = useMediaQuery(theme.breakpoints.up("lg"))
-  const colCount = isLg ? 5 : isMd ? 4 : 2
+  if (controller.isError)
+    return <MediaError refetch={controller.refetch} />
 
-  const skeletonHeights = [
-    240, 280, 320, 260, 300,
-    220, 340, 270, 310, 290,
-    250, 330, 210, 360, 275
-  ]
-
-  const { data, isLoading, isError, refetch } = useMedia(page)
-
-  const { deleteMedia } = useDeleteMedia(() => {
-    setDeleteId(null)
-  })
-
-  const visibleRows = useMasonryReveal(
-    data?.data?.length || 0,
-    colCount
-  )
-
-  const { handleDownload, handleCopy } = useMediaActions()
-
-  const displayData = useMemo(() => {
-    if (!data?.data) return []
-    return buildMasonryLayout(data.data, colCount)
-  }, [data?.data, colCount])
-
-  if (isError) return <MediaError refetch={refetch} />
-
-  if (isLoading)
+  if (controller.isLoading)
     return (
       <MediaLoading
-        colCount={colCount}
-        skeletonHeights={skeletonHeights}
+        colCount={controller.colCount}
+        skeletonHeights={controller.skeletonHeights}
       />
     )
 
-  if (!data?.data?.length) return <MediaEmpty />
+  if (!controller.data?.data?.length)
+    return <MediaEmpty />
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Fade in={!isLoading} timeout={800}>
+      <Fade in={!controller.isLoading} timeout={800}>
         <Box>
           <MediaHeader
-            viewMode={viewMode}
-            onChange={setViewMode}
+            viewMode={controller.viewMode}
+            onChange={controller.setViewMode}
           />
 
-          {viewMode === "grid" ? (
-            <MediaGridView
-              items={displayData.slice(0, visibleRows * colCount)}
-              colCount={colCount}
-              onCopy={handleCopy}
-              onDelete={setDeleteId}
-              onDownload={handleDownload}
-            />
-          ) : (
-            <MediaListView
-              items={data.data}
-              onDelete={setDeleteId}
-            />
-          )}
+          <MediaViewRenderer
+            viewMode={controller.viewMode}
+            items={controller.displayData}
+            colCount={controller.colCount}
+            visibleRows={controller.visibleRows}
+            onCopy={controller.handleCopy}
+            onDelete={controller.setDeleteId}
+            onDownload={controller.handleDownload}
+          />
 
           <MediaPagination
-            page={page}
-            totalPages={data.pagination.totalPages}
-            onChange={setPage}
+            page={controller.page}
+            totalPages={controller.data.pagination.totalPages}
+            onChange={controller.setPage}
           />
         </Box>
       </Fade>
 
       <MediaDeleteDialog
-        open={!!deleteId}
-        onClose={() => setDeleteId(null)}
+        open={!!controller.deleteId}
+        onClose={() => controller.setDeleteId(null)}
         onConfirm={() => {
-          if (deleteId) deleteMedia(deleteId)
+          if (controller.deleteId)
+            controller.deleteMedia(controller.deleteId)
         }}
       />
     </Container>
