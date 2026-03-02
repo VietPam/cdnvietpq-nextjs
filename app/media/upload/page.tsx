@@ -1,17 +1,17 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
+import React, { useState, useEffect } from "react";
 import { 
   Container, Paper, Stack, Typography, Box, Button, 
-  LinearProgress, Alert, IconButton, Fade, TextField, Chip, Divider 
+  LinearProgress, Alert, Fade, TextField, Chip, Divider 
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { api } from "@/lib/api"; // Sử dụng helper api đã có logic Auth
 
-// Đồng bộ cấu hình từ Backend
+// Cấu hình giới hạn
 const MAX_IMAGE_SIZE = 500 * 1024; 
 const MAX_VIDEO_SIZE = 1 * 1024 * 1024; 
 const ALLOWED_IMAGE_EXT = ["jpg", "jpeg", "png", "webp"];
@@ -21,18 +21,48 @@ export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [customName, setCustomName] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
+  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Cleanup URL để tránh tràn bộ nhớ
   useEffect(() => {
     return () => { if (previewUrl) URL.revokeObjectURL(previewUrl); };
   }, [previewUrl]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Hàm trích xuất kích thước chuẩn xác bằng Browser Engine
+  const extractDimensions = (selectedFile: File): Promise<{ width: number; height: number } | null> => {
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(selectedFile);
+      
+      if (selectedFile.type.startsWith("image/")) {
+        const img = new window.Image();
+        img.onload = () => {
+          const dims = { width: img.naturalWidth, height: img.naturalHeight };
+          URL.revokeObjectURL(url);
+          resolve(dims);
+        };
+        img.onerror = () => resolve(null);
+        img.src = url;
+      } else if (selectedFile.type.startsWith("video/")) {
+        const video = document.createElement("video");
+        video.preload = "metadata";
+        video.onloadedmetadata = () => {
+          const dims = { width: video.videoWidth, height: video.videoHeight };
+          URL.revokeObjectURL(url);
+          resolve(dims);
+        };
+        video.onerror = () => resolve(null);
+        video.src = url;
+      } else {
+        resolve(null);
+      }
+    });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
     if (!selected) return;
 
@@ -51,12 +81,18 @@ export default function UploadPage() {
       return setMessage({ type: "error", text: "Video vượt quá 1MB giới hạn!" });
     }
 
+    setLoading(true);
+    setMessage(null);
+
+    // Trích xuất Width/Height trước khi hiển thị preview
+    const dims = await extractDimensions(selected);
+    setDimensions(dims);
+
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(URL.createObjectURL(selected));
     setFile(selected);
-    // Tách tên file và đuôi file để cho phép edit phần tên
     setCustomName(selected.name.replace(/\.[^/.]+$/, "")); 
-    setMessage(null);
+    setLoading(false);
   };
 
   const handleUpload = async () => {
@@ -64,25 +100,33 @@ export default function UploadPage() {
     setLoading(true);
     
     const formData = new FormData();
-    // Lấy đuôi file gốc
     const ext = file.name.split(".").pop();
     const finalFileName = `${customName}.${ext}`;
     
-    // Tạo một file mới với tên đã edit (nếu có)
+    // Tạo file mới với tên đã chỉnh sửa
     const renamedFile = new File([file], finalFileName, { type: file.type });
 
     formData.append("file", renamedFile);
     formData.append("visibility", "public");
+    
+    // Gửi kèm thông số kích thước thu được từ Browser
+    if (dimensions) {
+      formData.append("width", dimensions.width.toString());
+      formData.append("height", dimensions.height.toString());
+    }
 
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/upload`, formData, {
-        headers: { "x-api-key": process.env.NEXT_PUBLIC_API_KEY },
-        onUploadProgress: (p) => setProgress(Math.round((p.loaded * 100) / (p.total || 100)))
-      });
+      // Dùng api.post (Fetch) để tự động đính kèm Authorization Bearer
+      await api.post("/upload", formData);
+
       setMessage({ type: "success", text: "Tải lên thành công!" });
       setTimeout(() => router.push("/media"), 1000);
-    } catch (err) {
-      setMessage({ type: "error", text: "Lỗi tải lên tệp!" });
+    } catch (err: any) {
+      console.error("Upload error:", err.message);
+      setMessage({ 
+        type: "error", 
+        text: err.message || "Lỗi tải lên tệp!" 
+      });
     } finally {
       setLoading(false);
     }
@@ -111,16 +155,15 @@ export default function UploadPage() {
             {!file ? (
               <Stack spacing={2} alignItems="center">
                 <CloudUploadIcon sx={{ fontSize: 48, color: "primary.light", opacity: 0.5 }} />
-                <Typography variant="body2" color="text.secondary">Kéo thả tệp hoặc nhấn để chọn</Typography>
-                <Button variant="contained" component="label" sx={{ borderRadius: 2 }}>
-                  Chọn tệp
+                <Typography variant="body2" color="text.secondary">Chọn hình ảnh hoặc video để tải lên</Typography>
+                <Button variant="contained" component="label" sx={{ borderRadius: 2 }} disabled={loading}>
+                  {loading ? "Đang xử lý..." : "Chọn tệp"}
                   <input type="file" hidden onChange={handleFileChange} accept=".jpg,.jpeg,.png,.webp,.mp4" />
                 </Button>
               </Stack>
             ) : (
               <Fade in={!!file}>
                 <Stack spacing={2}>
-                  {/* Preview Container */}
                   <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: 'common.black', height: 220 }}>
                     {file.type.startsWith("image/") ? (
                       <Image src={previewUrl!} alt="Preview" fill style={{ objectFit: 'contain' }} />
@@ -129,10 +172,9 @@ export default function UploadPage() {
                     )}
                   </Box>
 
-                  {/* Metadata & Edit Form */}
                   <Stack spacing={2} sx={{ textAlign: 'left', p: 1 }}>
                     <TextField
-                      label="Tên tệp (Bạn có thể sửa)"
+                      label="Tên tệp hiển thị"
                       fullWidth
                       size="small"
                       value={customName}
@@ -147,6 +189,12 @@ export default function UploadPage() {
                         <Typography variant="body2" fontWeight={700}>{(file.size / 1024).toFixed(1)} KB</Typography>
                       </Box>
                       <Box>
+                        <Typography variant="caption" color="text.secondary" display="block">Kích thước</Typography>
+                        <Typography variant="body2" fontWeight={700}>
+                          {dimensions ? `${dimensions.width}x${dimensions.height}` : "..."}
+                        </Typography>
+                      </Box>
+                      <Box>
                         <Typography variant="caption" color="text.secondary" display="block">Định dạng</Typography>
                         <Typography variant="body2" fontWeight={700} sx={{ textTransform: 'uppercase' }}>{file.name.split('.').pop()}</Typography>
                       </Box>
@@ -157,7 +205,7 @@ export default function UploadPage() {
                     startIcon={<DeleteIcon />} 
                     color="error" 
                     size="small" 
-                    onClick={() => {setFile(null); setPreviewUrl(null);}}
+                    onClick={() => {setFile(null); setPreviewUrl(null); setDimensions(null);}}
                     disabled={loading}
                   >
                     Chọn lại tệp khác
@@ -169,8 +217,8 @@ export default function UploadPage() {
 
           {loading && (
             <Box>
-              <Typography variant="caption" fontWeight={700} color="primary">Đang tải lên: {progress}%</Typography>
-              <LinearProgress variant="determinate" value={progress} sx={{ height: 8, borderRadius: 4, mt: 0.5 }} />
+              <Typography variant="caption" fontWeight={700} color="primary">Đang xử lý dữ liệu...</Typography>
+              <LinearProgress sx={{ height: 4, borderRadius: 4, mt: 0.5 }} />
             </Box>
           )}
 
@@ -184,7 +232,7 @@ export default function UploadPage() {
             disabled={loading || !file} 
             sx={{ py: 1.5, fontWeight: 800, borderRadius: 2, textTransform: 'none', fontSize: '1rem' }}
           >
-            {loading ? "Đang xử lý..." : "Xác nhận và Tải lên"}
+            {loading ? "Đang tải lên..." : "Xác nhận và Tải lên"}
           </Button>
         </Stack>
       </Paper>
