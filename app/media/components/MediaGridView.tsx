@@ -17,7 +17,7 @@ import {
 } from "@mui/icons-material";
 import { MediaRenderer } from "@/components/MediaRenderer";
 import { formatBytes } from "@/lib/utils";
-import { MediaItem } from "../page";
+import { MediaItem } from "@/types/media";
 
 interface Props {
   items: MediaItem[];
