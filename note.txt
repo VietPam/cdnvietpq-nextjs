@@ -12,3 +12,5 @@ xuat publickey tu private key: openssl rsa -in private.pem -outform PEM -pubout 
 writing RSA key
 
 npm install js-cookie @types/js-cookie
+
+npm install react-intersection-observer

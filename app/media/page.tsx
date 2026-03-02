@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import {
@@ -48,12 +48,13 @@ interface MediaResponse {
 
 export default function MediaPage() {
   const [page, setPage] = useState(1);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [visibleRows, setVisibleRows] = useState(1);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     msg: string;
-    type: 'success' | 'error';
+    type: "success" | "error";
   }>({ open: false, msg: "", type: "success" });
 
   const queryClient = useQueryClient();
@@ -77,16 +78,37 @@ export default function MediaPage() {
     queryFn: () => api.get(`/media?page=${page}&limit=15`)
   });
 
+  useEffect(() => {
+    setVisibleRows(1);
+  }, [page]);
+
+  useEffect(() => {
+    if (!data?.data) return;
+
+    const totalRows = Math.ceil(data.data.length / colCount);
+
+    if (visibleRows >= totalRows) return;
+
+    const timer = setTimeout(() => {
+      setVisibleRows((prev) => prev + 1);
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [visibleRows, data?.data, colCount]);
+
   const displayData = useMemo(() => {
     if (!data?.data) return [];
+
     const withRatio = data.data.map((item) => ({
       ...item,
       ratio:
         item.height && item.width ? item.height / item.width : 1
     }));
+
     withRatio.sort((a, b) => b.ratio - a.ratio);
 
     const result = new Array(withRatio.length);
+
     for (let i = 0; i < withRatio.length; i++) {
       const row = Math.floor(i / colCount);
       const col = i % colCount;
@@ -95,6 +117,7 @@ export default function MediaPage() {
         colCount,
         withRatio.length - base
       );
+
       const sortedIndex =
         row % 2 === 0
           ? base + col
@@ -105,6 +128,11 @@ export default function MediaPage() {
 
     return result;
   }, [data?.data, colCount]);
+
+  const visibleItems = displayData.slice(
+    0,
+    visibleRows * colCount
+  );
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/media/${id}`),
@@ -155,6 +183,7 @@ export default function MediaPage() {
   };
 
   if (isError) return <MediaError refetch={refetch} />;
+
   if (isLoading)
     return (
       <MediaLoading
@@ -162,6 +191,7 @@ export default function MediaPage() {
         skeletonHeights={skeletonHeights}
       />
     );
+
   if (!data || data.data.length === 0)
     return <MediaEmpty />;
 
@@ -196,7 +226,7 @@ export default function MediaPage() {
 
           {viewMode === "grid" ? (
             <MediaGridView
-              items={displayData}
+              items={visibleItems}
               colCount={colCount}
               onCopy={copyToClipboard}
               onDelete={setDeleteId}
