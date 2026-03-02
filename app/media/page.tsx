@@ -3,7 +3,6 @@ import React, { useState, useMemo } from "react"
 import {
   Container,
   Box,
-  Pagination,
   Fade,
   useTheme,
   useMediaQuery
@@ -15,6 +14,7 @@ import MediaEmpty from "./components/MediaEmpty"
 import MediaError from "./components/MediaError"
 import MediaDeleteDialog from "./components/MediaDeleteDialog"
 import MediaHeader from "./components/MediaHeader"
+import MediaPagination from "./components/MediaPagination"
 import { useMedia, useDeleteMedia } from "@/hooks/useMedia"
 import { buildMasonryLayout } from "@/utils/buildMasonryLayout"
 import { useMasonryReveal } from "@/hooks/useMasonryReveal"
@@ -90,15 +90,11 @@ export default function MediaPage() {
             />
           )}
 
-          <Box display="flex" justifyContent="center" mt={6}>
-            <Pagination
-              count={data.pagination.totalPages}
-              page={page}
-              onChange={(_, v) => setPage(v)}
-              color="primary"
-              shape="rounded"
-            />
-          </Box>
+          <MediaPagination
+            page={page}
+            totalPages={data.pagination.totalPages}
+            onChange={setPage}
+          />
         </Box>
       </Fade>
 
