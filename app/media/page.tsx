@@ -1,7 +1,5 @@
 "use client"
 import React, { useState, useMemo, useEffect } from "react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { api } from "@/lib/api"
 import {
   Container,
   Stack,
@@ -22,7 +20,8 @@ import MediaEmpty from "./components/MediaEmpty"
 import MediaError from "./components/MediaError"
 import MediaDeleteDialog from "./components/MediaDeleteDialog"
 import MediaSnackbar from "./components/MediaSnackbar"
-import { MediaItem, MediaResponse } from "@/types/media"
+import { MediaItem } from "@/types/media"
+import { useMedia, useDeleteMedia } from "@/hooks/useMedia"
 
 export default function MediaPage() {
   const [page, setPage] = useState(1)
@@ -35,7 +34,6 @@ export default function MediaPage() {
     type: "success"
   })
 
-  const queryClient = useQueryClient()
   const theme = useTheme()
 
   const isSm = useMediaQuery(theme.breakpoints.down("md"))
@@ -45,14 +43,16 @@ export default function MediaPage() {
   const colCount = isLg ? 5 : isMd ? 4 : 2
 
   const skeletonHeights = useMemo(
-    () => Array.from({ length: 15 }, () => Math.floor(Math.random() * 200 + 200)),
+    () => [
+      240, 280, 320, 260, 300,
+      220, 340, 270, 310, 290,
+      250, 330, 210, 360, 275
+    ],
     []
   )
 
-  const { data, isLoading, isError, refetch } = useQuery<MediaResponse>({
-    queryKey: ["media", page],
-    queryFn: () => api.get(`/media?page=${page}&limit=15`)
-  })
+  const { data, isLoading, isError, refetch } = useMedia(page)
+  const deleteMutation = useDeleteMedia()
 
   useEffect(() => {
     setVisibleRows(1)
@@ -93,19 +93,6 @@ export default function MediaPage() {
     })
   }, [data?.data, colCount])
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.delete(`/media/${id}`),
-    onSuccess: () => {
-      setSnackbar({
-        open: true,
-        msg: "Đã xóa tệp thành công",
-        type: "success"
-      })
-      setDeleteId(null)
-      queryClient.invalidateQueries({ queryKey: ["media"] })
-    }
-  })
-
   const handleDownload = async (id: string, filename: string) => {
     try {
       const res = await fetch(
@@ -136,6 +123,15 @@ export default function MediaPage() {
       msg: "Đã sao chép liên kết!",
       type: "success"
     })
+  }
+
+  const handleDeleteSuccess = () => {
+    setSnackbar({
+      open: true,
+      msg: "Đã xóa tệp thành công",
+      type: "success"
+    })
+    setDeleteId(null)
   }
 
   if (isError) return <MediaError refetch={refetch} />
@@ -207,9 +203,13 @@ export default function MediaPage() {
       <MediaDeleteDialog
         open={!!deleteId}
         onClose={() => setDeleteId(null)}
-        onConfirm={() =>
-          deleteId && deleteMutation.mutate(deleteId)
-        }
+        onConfirm={() => {
+          if (deleteId) {
+            deleteMutation.mutate(deleteId, {
+              onSuccess: handleDeleteSuccess
+            })
+          }
+        }}
       />
 
       <MediaSnackbar
