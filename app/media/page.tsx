@@ -1,35 +1,31 @@
 "use client"
-import React, { useState, useMemo, useEffect } from "react"
+import React, { useState, useMemo } from "react"
 import {
   Container,
-  Stack,
-  Typography,
-  ToggleButton,
-  ToggleButtonGroup,
   Box,
   Pagination,
   Fade,
   useTheme,
   useMediaQuery
 } from "@mui/material"
-import { GridView, ViewList } from "@mui/icons-material"
 import MediaGridView from "./components/MediaGridView"
 import MediaListView from "./components/MediaListView"
 import MediaLoading from "./components/MediaLoading"
 import MediaEmpty from "./components/MediaEmpty"
 import MediaError from "./components/MediaError"
 import MediaDeleteDialog from "./components/MediaDeleteDialog"
+import MediaHeader from "./components/MediaHeader"
 import { useMedia, useDeleteMedia } from "@/hooks/useMedia"
 import { buildMasonryLayout } from "@/utils/buildMasonryLayout"
 import { downloadMedia } from "@/utils/downloadMedia"
 import { copyToClipboard } from "@/utils/copyToClipboard"
 import { useGlobalSnackbar } from "@/contexts/GlobalSnackbarProvider"
+import { useMasonryReveal } from "@/hooks/useMasonryReveal"
 
 export default function MediaPage() {
   const [page, setPage] = useState(1)
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
-  const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [visibleRows, setVisibleRows] = useState(1)
+  const [viewMode, setViewMode] = useState("grid")
+  const [deleteId, setDeleteId] = useState<any>(null)
 
   const { showSnackbar } = useGlobalSnackbar()
 
@@ -50,27 +46,17 @@ export default function MediaPage() {
     setDeleteId(null)
   })
 
-  useEffect(() => {
-    setVisibleRows(1)
-  }, [page])
-
-  useEffect(() => {
-    if (!data?.data || visibleRows >= Math.ceil(data.data.length / colCount))
-      return
-
-    const timer = setTimeout(() => {
-      setVisibleRows(v => v + 1)
-    }, 200)
-
-    return () => clearTimeout(timer)
-  }, [visibleRows, data?.data, colCount])
+  const visibleRows = useMasonryReveal(
+    data?.data?.length || 0,
+    colCount
+  )
 
   const displayData = useMemo(() => {
     if (!data?.data) return []
     return buildMasonryLayout(data.data, colCount)
   }, [data?.data, colCount])
 
-  const handleDownload = async (id: string, filename: string) => {
+  const handleDownload = async (id: any, filename: any) => {
     try {
       await downloadMedia(id, filename)
     } catch {
@@ -78,7 +64,7 @@ export default function MediaPage() {
     }
   }
 
-  const handleCopy = async (id: string) => {
+  const handleCopy = async (id: any) => {
     try {
       await copyToClipboard(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/media/${id}/file`
@@ -90,6 +76,7 @@ export default function MediaPage() {
   }
 
   if (isError) return <MediaError refetch={refetch} />
+
   if (isLoading)
     return (
       <MediaLoading
@@ -97,36 +84,17 @@ export default function MediaPage() {
         skeletonHeights={skeletonHeights}
       />
     )
+
   if (!data?.data?.length) return <MediaEmpty />
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       <Fade in={!isLoading} timeout={800}>
         <Box>
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-            mb={4}
-          >
-            <Typography variant="h4" fontWeight={800}>
-              Thư viện Media
-            </Typography>
-
-            <ToggleButtonGroup
-              value={viewMode}
-              exclusive
-              onChange={(_, v) => v && setViewMode(v)}
-              size="small"
-            >
-              <ToggleButton value="grid">
-                <GridView fontSize="small" />
-              </ToggleButton>
-              <ToggleButton value="list">
-                <ViewList fontSize="small" />
-              </ToggleButton>
-            </ToggleButtonGroup>
-          </Stack>
+          <MediaHeader
+            viewMode={viewMode}
+            onChange={setViewMode}
+          />
 
           {viewMode === "grid" ? (
             <MediaGridView
