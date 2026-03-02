@@ -15,6 +15,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { auth } from "@/lib/auth";
+import { Analytics } from "@vercel/analytics/next";
 
 const navItems = [
   { label: "Dashboard", href: "/" },
@@ -233,6 +234,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Box>
           </Box>
         </QueryClientProvider>
+        <Analytics />
       </body>
     </html>
   );
