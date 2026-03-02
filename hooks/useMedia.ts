@@ -3,12 +3,15 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tansta
 import { useGlobalSnackbar } from "@/contexts/GlobalSnackbarProvider"
 
 const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL
+const LIMIT = 20
 
 export function useMedia(page: number) {
   return useQuery<any>({
     queryKey: ["media", page],
     queryFn: async () => {
-      const res = await fetch(`${BASE_URL}/media?page=${page}`)
+      const res = await fetch(
+        `${BASE_URL}/media?page=${page}&limit=${LIMIT}`
+      )
       if (!res.ok) throw new Error("Failed to fetch media")
       return res.json()
     },
