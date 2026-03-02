@@ -20,8 +20,8 @@ import MediaEmpty from "./components/MediaEmpty"
 import MediaError from "./components/MediaError"
 import MediaDeleteDialog from "./components/MediaDeleteDialog"
 import MediaSnackbar from "./components/MediaSnackbar"
-import { MediaItem } from "@/types/media"
 import { useMedia, useDeleteMedia } from "@/hooks/useMedia"
+import { buildMasonryLayout } from "@/utils/buildMasonryLayout"
 
 export default function MediaPage() {
   const [page, setPage] = useState(1)
@@ -36,7 +36,6 @@ export default function MediaPage() {
 
   const theme = useTheme()
 
-  const isSm = useMediaQuery(theme.breakpoints.down("md"))
   const isMd = useMediaQuery(theme.breakpoints.between("md", "lg"))
   const isLg = useMediaQuery(theme.breakpoints.up("lg"))
 
@@ -71,26 +70,7 @@ export default function MediaPage() {
 
   const displayData = useMemo(() => {
     if (!data?.data) return []
-
-    const items = data.data
-      .map(i => ({
-        ...i,
-        ratio: i.height && i.width ? i.height / i.width : 1
-      }))
-      .sort((a, b) => b.ratio - a.ratio)
-
-    return items.map((_, i, arr) => {
-      const row = Math.floor(i / colCount)
-      const col = i % colCount
-      const base = row * colCount
-      const countInRow = Math.min(colCount, arr.length - base)
-
-      return arr[
-        row % 2 === 0
-          ? base + col
-          : base + (countInRow - 1 - col)
-      ]
-    })
+    return buildMasonryLayout(data.data, colCount)
   }, [data?.data, colCount])
 
   const handleDownload = async (id: string, filename: string) => {
