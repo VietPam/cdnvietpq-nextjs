@@ -1,5 +1,5 @@
-"use client";
-import React from "react";
+"use client"
+import React from "react"
 import {
   Card,
   Box,
@@ -7,24 +7,26 @@ import {
   Typography,
   IconButton,
   Tooltip
-} from "@mui/material";
-import Masonry from "@mui/lab/Masonry";
+} from "@mui/material"
+import Masonry from "@mui/lab/Masonry"
 import {
   DeleteOutline,
   ContentCopy,
   Download,
-  PlayCircleOutline
-} from "@mui/icons-material";
-import { MediaRenderer } from "@/components/MediaRenderer";
-import { formatBytes } from "@/lib/utils";
-import { MediaItem } from "@/types/media";
+  PlayCircleOutline,
+  Visibility
+} from "@mui/icons-material"
+import { useRouter } from "next/navigation"
+import { MediaRenderer } from "@/components/MediaRenderer"
+import { formatBytes } from "@/lib/utils"
+import { MediaItem } from "@/types/media"
 
 interface Props {
-  items: MediaItem[];
-  colCount: number;
-  onCopy: (id: string) => void;
-  onDelete: (id: string) => void;
-  onDownload: (id: string, filename: string) => void;
+  items: MediaItem[]
+  colCount: number
+  onCopy: (id: string) => void
+  onDelete: (id: string) => void
+  onDownload: (id: string, filename: string) => void
 }
 
 export default function MediaGridView({
@@ -34,10 +36,12 @@ export default function MediaGridView({
   onDelete,
   onDownload
 }: Props) {
+  const router = useRouter()
+
   return (
     <Masonry columns={colCount} spacing={1.5}>
       {items.map((item, index) => {
-        const isFirstRow = index < colCount;
+        const isFirstRow = index < colCount
 
         return (
           <Card
@@ -106,6 +110,19 @@ export default function MediaGridView({
               }}
             >
               <Stack direction="row" justifyContent="flex-end" spacing={0.5}>
+                <Tooltip title="Xem chi tiết">
+                  <IconButton
+                    size="small"
+                    onClick={() => router.push(`/media/${item.id}`)}
+                    sx={{
+                      bgcolor: "rgba(255,255,255,0.2)",
+                      color: "white"
+                    }}
+                  >
+                    <Visibility fontSize="inherit" />
+                  </IconButton>
+                </Tooltip>
+
                 <Tooltip title="Copy link">
                   <IconButton
                     size="small"
@@ -174,8 +191,8 @@ export default function MediaGridView({
               </Box>
             </Box>
           </Card>
-        );
+        )
       })}
     </Masonry>
-  );
+  )
 }

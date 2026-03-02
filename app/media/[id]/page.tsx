@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { api } from "@/lib/api";
 import { 
   Container, Typography, Box, Button, Stack, Paper, 
   Chip, CircularProgress, Grid 
@@ -24,24 +23,40 @@ export default function MediaDetailPage() {
   const fileUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/media/${id}/file`;
 
   useEffect(() => {
+    if (!id) return;
+
     let isMounted = true;
-    
-    api.get<any>(`/media/${id}`)
-      .then(res => {
-        if (isMounted) {
-          if (res.success) {
-            setItem(res.media);
-          } else {
-            setError("Không tìm thấy tệp tin này.");
-          }
+
+    const checkFile = async () => {
+      try {
+        const res = await fetch(fileUrl, { method: "HEAD" });
+
+        if (!res.ok) {
+          setError("Không tìm thấy tệp tin này.");
+          return;
         }
-      })
-      .catch(() => {
+
+        const contentType = res.headers.get("content-type") || "";
+        const contentLength = res.headers.get("content-length") || "0";
+
+        if (isMounted) {
+          setItem({
+            id,
+            filename: id,
+            mime_type: contentType,
+            size: Number(contentLength),
+            created_at: null,
+            visibility: "public"
+          });
+        }
+      } catch {
         if (isMounted) setError("Đã có lỗi xảy ra khi tải dữ liệu.");
-      })
-      .finally(() => {
+      } finally {
         if (isMounted) setLoading(false);
-      });
+      }
+    };
+
+    checkFile();
 
     return () => { isMounted = false; };
   }, [id]);
@@ -51,7 +66,6 @@ export default function MediaDetailPage() {
     alert("Đã sao chép link CDN!");
   };
 
-  // Trạng thái Loading
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
@@ -60,7 +74,6 @@ export default function MediaDetailPage() {
     );
   }
 
-  // Trạng thái Lỗi hoặc Không tìm thấy
   if (error || !item) {
     return (
       <Container sx={{ py: 10, textAlign: 'center' }}>
@@ -76,7 +89,6 @@ export default function MediaDetailPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* Thanh điều hướng nhanh */}
       <Button 
         onClick={() => router.back()} 
         startIcon={<ArrowBackIcon />} 
@@ -86,8 +98,6 @@ export default function MediaDetailPage() {
       </Button>
 
       <Grid container spacing={4}>
-        {/* Cột trái: Khu vực hiển thị Media chính */}
-        {/* ĐÃ FIX: Bỏ prop 'item' và dùng 'size' */}
         <Grid size={{ xs: 12, md: 8 }}>
           <Paper 
             elevation={0}
@@ -99,16 +109,13 @@ export default function MediaDetailPage() {
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center', 
-              minHeight: '500px',
-              position: 'relative'
+              minHeight: '500px'
             }}
           >
             <MediaRenderer url={fileUrl} mimeType={item.mime_type} preview={false} />
           </Paper>
         </Grid>
 
-        {/* Cột phải: Thông tin chi tiết và hành động */}
-        {/* ĐÃ FIX: Bỏ prop 'item' và dùng 'size' */}
         <Grid size={{ xs: 12, md: 4 }}>
           <Stack spacing={3}>
             <Box>
@@ -121,7 +128,6 @@ export default function MediaDetailPage() {
                   size="small" 
                   color="primary" 
                   variant="filled" 
-                  sx={{ fontWeight: 600 }}
                 />
                 <Chip 
                   label={item.visibility === 'public' ? 'Công khai' : 'Riêng tư'} 
@@ -131,7 +137,6 @@ export default function MediaDetailPage() {
               </Stack>
             </Box>
 
-            {/* Nhóm nút hành động */}
             <Stack spacing={1.5}>
               <Button 
                 fullWidth 
@@ -157,31 +162,15 @@ export default function MediaDetailPage() {
               </Button>
             </Stack>
 
-            {/* Bảng thông số kỹ thuật */}
-            <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3, bgcolor: 'background.paper' }}>
+            <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
               <Typography variant="subtitle2" fontWeight={700} mb={2}>
                 Thông tin tệp tin
               </Typography>
               
-              <Grid container spacing={2}>
-                {/* ĐÃ FIX: Dùng size thay cho item xs={12} */}
-                <Grid size={{ xs: 12 }}>
-                  <DetailItem label="Dung lượng" value={formatBytes(item.size)} />
-                </Grid>
-                <Grid size={{ xs: 12 }}>
-                  <DetailItem 
-                    label="ID định danh" 
-                    value={item.id} 
-                    isCode 
-                  />
-                </Grid>
-                <Grid size={{ xs: 12 }}>
-                  <DetailItem label="Ngày tải lên" value={formatDate(item.created_at)} />
-                </Grid>
-                <Grid size={{ xs: 12 }}>
-                  <DetailItem label="Loại MIME" value={item.mime_type} />
-                </Grid>
-              </Grid>
+              <DetailItem label="Dung lượng" value={formatBytes(item.size)} />
+              <DetailItem label="ID định danh" value={item.id} isCode />
+              <DetailItem label="Ngày tải lên" value={item.created_at ? formatDate(item.created_at) : "-"} />
+              <DetailItem label="Loại MIME" value={item.mime_type} />
             </Paper>
           </Stack>
         </Grid>
@@ -190,9 +179,6 @@ export default function MediaDetailPage() {
   );
 }
 
-/**
- * Component phụ hiển thị từng dòng thông tin
- */
 function DetailItem({ label, value, isCode = false }: { label: string, value: string, isCode?: boolean }) {
   return (
     <Box>
@@ -204,10 +190,7 @@ function DetailItem({ label, value, isCode = false }: { label: string, value: st
         fontWeight={isCode ? 400 : 600}
         sx={{ 
           wordBreak: 'break-all', 
-          fontFamily: isCode ? 'monospace' : 'inherit',
-          bgcolor: isCode ? 'action.hover' : 'transparent',
-          p: isCode ? 0.5 : 0,
-          borderRadius: 1
+          fontFamily: isCode ? 'monospace' : 'inherit'
         }}
       >
         {value}
