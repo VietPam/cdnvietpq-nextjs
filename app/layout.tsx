@@ -3,6 +3,7 @@ import { Providers } from "@/components/Providers"
 import { Navbar } from "@/components/NavBar"
 import { Box } from "@mui/material"
 import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import { GlobalSnackbarProvider } from "@/contexts/GlobalSnackbarProvider"
 
 export const metadata: Metadata = {
@@ -29,6 +30,7 @@ export default function RootLayout({
           </GlobalSnackbarProvider>
         </Providers>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )
