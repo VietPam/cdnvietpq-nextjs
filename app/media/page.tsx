@@ -22,6 +22,7 @@ import MediaDeleteDialog from "./components/MediaDeleteDialog"
 import MediaSnackbar from "./components/MediaSnackbar"
 import { useMedia, useDeleteMedia } from "@/hooks/useMedia"
 import { buildMasonryLayout } from "@/utils/buildMasonryLayout"
+import { downloadMedia } from "@/utils/downloadMedia"
 
 export default function MediaPage() {
   const [page, setPage] = useState(1)
@@ -75,16 +76,7 @@ export default function MediaPage() {
 
   const handleDownload = async (id: string, filename: string) => {
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/media/${id}/file`
-      )
-      const blob = await res.blob()
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = filename
-      link.click()
-      window.URL.revokeObjectURL(url)
+      await downloadMedia(id, filename)
     } catch {
       setSnackbar({
         open: true,
