@@ -19,18 +19,19 @@ import MediaLoading from "./components/MediaLoading"
 import MediaEmpty from "./components/MediaEmpty"
 import MediaError from "./components/MediaError"
 import MediaDeleteDialog from "./components/MediaDeleteDialog"
-import MediaSnackbar from "./components/MediaSnackbar"
 import { useMedia, useDeleteMedia } from "@/hooks/useMedia"
-import { useMediaSnackbar } from "@/hooks/useMediaSnackbar"
 import { buildMasonryLayout } from "@/utils/buildMasonryLayout"
 import { downloadMedia } from "@/utils/downloadMedia"
 import { copyToClipboard } from "@/utils/copyToClipboard"
+import { useGlobalSnackbar } from "@/contexts/GlobalSnackbarProvider"
 
 export default function MediaPage() {
   const [page, setPage] = useState(1)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [visibleRows, setVisibleRows] = useState(1)
+
+  const { showSnackbar } = useGlobalSnackbar()
 
   const theme = useTheme()
   const isMd = useMediaQuery(theme.breakpoints.between("md", "lg"))
@@ -45,9 +46,6 @@ export default function MediaPage() {
     ],
     []
   )
-
-  const { snackbar, showSuccess, showError, closeSnackbar } =
-    useMediaSnackbar()
 
   const { data, isLoading, isError, refetch } = useMedia(page)
   const deleteMutation = useDeleteMedia()
@@ -76,7 +74,7 @@ export default function MediaPage() {
     try {
       await downloadMedia(id, filename)
     } catch {
-      showError("Không thể tải tệp xuống!")
+      showSnackbar("Không thể tải tệp xuống!", "error")
     }
   }
 
@@ -85,14 +83,14 @@ export default function MediaPage() {
       await copyToClipboard(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/media/${id}/file`
       )
-      showSuccess("Đã sao chép liên kết!")
+      showSnackbar("Đã sao chép liên kết!", "success")
     } catch {
-      showError("Không thể sao chép liên kết!")
+      showSnackbar("Không thể sao chép liên kết!", "error")
     }
   }
 
   const handleDeleteSuccess = () => {
-    showSuccess("Đã xóa tệp thành công")
+    showSnackbar("Đã xóa tệp thành công", "success")
     setDeleteId(null)
   }
 
@@ -172,11 +170,6 @@ export default function MediaPage() {
             })
           }
         }}
-      />
-
-      <MediaSnackbar
-        snackbar={snackbar}
-        setSnackbar={closeSnackbar}
       />
     </Container>
   )
