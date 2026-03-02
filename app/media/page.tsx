@@ -38,17 +38,17 @@ export default function MediaPage() {
   const isLg = useMediaQuery(theme.breakpoints.up("lg"))
   const colCount = isLg ? 5 : isMd ? 4 : 2
 
-  const skeletonHeights = useMemo(
-    () => [
-      240, 280, 320, 260, 300,
-      220, 340, 270, 310, 290,
-      250, 330, 210, 360, 275
-    ],
-    []
-  )
+  const skeletonHeights = [
+    240, 280, 320, 260, 300,
+    220, 340, 270, 310, 290,
+    250, 330, 210, 360, 275
+  ]
 
   const { data, isLoading, isError, refetch } = useMedia(page)
-  const deleteMutation = useDeleteMedia()
+
+  const { deleteMedia } = useDeleteMedia(() => {
+    setDeleteId(null)
+  })
 
   useEffect(() => {
     setVisibleRows(1)
@@ -87,11 +87,6 @@ export default function MediaPage() {
     } catch {
       showSnackbar("Không thể sao chép liên kết!", "error")
     }
-  }
-
-  const handleDeleteSuccess = () => {
-    showSnackbar("Đã xóa tệp thành công", "success")
-    setDeleteId(null)
   }
 
   if (isError) return <MediaError refetch={refetch} />
@@ -164,11 +159,7 @@ export default function MediaPage() {
         open={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={() => {
-          if (deleteId) {
-            deleteMutation.mutate(deleteId, {
-              onSuccess: handleDeleteSuccess
-            })
-          }
+          if (deleteId) deleteMedia(deleteId)
         }}
       />
     </Container>

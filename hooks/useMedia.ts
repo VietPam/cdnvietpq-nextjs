@@ -1,21 +1,45 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { api } from "@/lib/api"
-import { MediaResponse } from "@/types/media"
+"use client"
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query"
+import { useGlobalSnackbar } from "@/contexts/GlobalSnackbarProvider"
 
-export const useMedia = (page: number) => {
-  return useQuery<MediaResponse>({
+const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL
+
+export function useMedia(page: number) {
+  return useQuery<any>({
     queryKey: ["media", page],
-    queryFn: () => api.get(`/media?page=${page}&limit=15`)
+    queryFn: async () => {
+      const res = await fetch(`${BASE_URL}/media?page=${page}`)
+      if (!res.ok) throw new Error("Failed to fetch media")
+      return res.json()
+    },
+    placeholderData: keepPreviousData
   })
 }
 
-export const useDeleteMedia = () => {
+export function useDeleteMedia(onSuccessClose?: () => void) {
   const queryClient = useQueryClient()
+  const { showSnackbar } = useGlobalSnackbar()
 
-  return useMutation({
-    mutationFn: (id: string) => api.delete(`/media/${id}`),
+  const mutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${BASE_URL}/media/${id}`, {
+        method: "DELETE"
+      })
+      if (!res.ok) throw new Error("Delete failed")
+      return id
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["media"] })
+      showSnackbar("Đã xóa tệp thành công", "success")
+      if (onSuccessClose) onSuccessClose()
+    },
+    onError: () => {
+      showSnackbar("Không thể xóa tệp!", "error")
     }
   })
+
+  return {
+    deleteMedia: mutation.mutate,
+    isDeleting: mutation.isPending
+  }
 }
